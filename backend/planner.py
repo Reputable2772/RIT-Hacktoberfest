@@ -18,11 +18,18 @@ from backend.gemma import (
 from backend.gtfs_service import gtfs_index
 from backend.image_quality import assess_image_quality
 from backend.locations import FIXED_LOCATIONS, DemoLocation, get_location
+from backend.manifest_service import (
+    LEGACY_OBS_MAP,
+    REVERSE_LEGACY_MAP,
+    ROUTE_METADATA,
+    manifest_service,
+)
 from backend.schemas import (
     AccessibilityCriterionFinding,
     ConfidenceRating,
     FeatureStatus,
     GemmaVisualAnalysis,
+    ObservationCoverageSummary,
 )
 from backend.transit_data import (
     ALL_JOURNEY_OPTIONS,
@@ -126,35 +133,26 @@ def get_image_path(filename: str) -> Optional[str]:
     if not filename:
         return None
 
-    # Extension check: only serve legitimate image files
+    resolved = manifest_service.resolve_image_path(filename)
+    if resolved:
+        return resolved
+
+    # Fallback for legacy filenames
     ext = os.path.splitext(filename)[1].lower()
     if ext not in (".png", ".jpg", ".jpeg", ".webp"):
         return None
 
     base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    data_dir = os.path.join(base_dir, "data")
-    real_data_dir = os.path.realpath(data_dir)
-
-    # Reject traversal characters
     normalized_name = os.path.normpath(filename).lstrip(os.path.sep)
     if ".." in normalized_name.split(os.path.sep):
         return None
 
-    candidates = [
-        os.path.join(data_dir, "observations", os.path.basename(normalized_name)),
-        os.path.join(data_dir, "street_view", "a_to_b", os.path.basename(normalized_name)),
-        os.path.join(data_dir, "street_view", "b_to_c", os.path.basename(normalized_name)),
-        os.path.join(data_dir, "street_view", "c_to_a", os.path.basename(normalized_name)),
-        os.path.join(base_dir, normalized_name),
-    ]
     for meta in PREPARED_IMAGES_MAP.values():
         if filename in (meta.get("legacy_name"), meta.get("filename")):
-            candidates.insert(0, os.path.join(base_dir, meta["filename"]))
+            p = os.path.realpath(os.path.join(base_dir, meta["filename"]))
+            if os.path.isfile(p):
+                return p
 
-    for p in candidates:
-        real_p = os.path.realpath(p)
-        if real_p.startswith(real_data_dir + os.path.sep) and os.path.isfile(real_p):
-            return real_p
     return None
 
 
@@ -257,14 +255,38 @@ def recalculate_journey_from_cache(journey: JourneyOption) -> JourneyOption:
     """Dynamically recalculate a journey's accessibility score and concerns from ANALYSIS_CACHE."""
     j_copy = journey.model_copy(deep=True)
     corridor = j_copy.journey_key
+    route_id = {"A->B": "a_to_b", "B->C": "b_to_c", "C->A": "c_to_a"}.get(corridor)
 
-    # Check which observations affect this corridor
+    if route_id:
+        coverage_reports = manifest_service.get_route_coverage_reports(ANALYSIS_CACHE)
+        rep = coverage_reports.get(route_id)
+        if rep:
+            j_copy.observation_coverage = {
+                "total_planned": rep.total_planned,
+                "collected": rep.collected_count,
+                "unavailable": rep.unavailable_count,
+                "analyzed": rep.analyzed_count,
+            }
+
     relevant_analyses: List[GemmaVisualAnalysis] = []
+    seen_images: Set[str] = set()
+
+    if route_id:
+        for obs in manifest_service.get_observations(route_id=route_id, analysis_cache=ANALYSIS_CACHE):
+            if obs.id in ANALYSIS_CACHE:
+                analysis = ANALYSIS_CACHE[obs.id]
+                img_key = obs.image_filename or obs.id
+                if img_key not in seen_images:
+                    seen_images.add(img_key)
+                    relevant_analyses.append(analysis)
+
     for obs_id, mapping in OBSERVATION_SEGMENT_MAP.items():
         if corridor in mapping["corridors"] and obs_id in ANALYSIS_CACHE:
-            relevant_analyses.append(ANALYSIS_CACHE[obs_id])
+            canonical_id = LEGACY_OBS_MAP.get(obs_id, obs_id)
+            if canonical_id not in seen_images and obs_id not in seen_images:
+                seen_images.add(obs_id)
+                relevant_analyses.append(ANALYSIS_CACHE[obs_id])
 
-    # Also check segment-specific uploads
     for seg in j_copy.segments:
         if seg.id in ANALYSIS_CACHE:
             relevant_analyses.append(ANALYSIS_CACHE[seg.id])
@@ -272,7 +294,6 @@ def recalculate_journey_from_cache(journey: JourneyOption) -> JourneyOption:
     if not relevant_analyses:
         return j_copy
 
-    # Gather scores and concerns from valid analyses
     segment_scores = []
     accumulated_concerns = list(j_copy.accessibility_concerns)
 
@@ -284,11 +305,8 @@ def recalculate_journey_from_cache(journey: JourneyOption) -> JourneyOption:
                 accumulated_concerns.append(c)
 
     if segment_scores:
-        # In accessibility routing, the lowest segment score represents the critical barrier/bottleneck
         min_score = min(segment_scores)
         avg_score = sum(segment_scores) / len(segment_scores)
-        
-        # Penalize heavily if any walking segment has confirmed barriers
         composite_score = round(min_score * 0.7 + avg_score * 0.3, 1)
         j_copy.accessibility_score = composite_score
         j_copy.accessibility_concerns = accumulated_concerns
@@ -318,23 +336,43 @@ def get_evaluated_journeys(sort_criterion: str = "fastest") -> Dict[str, List[Jo
 def run_gemma_analysis_on_prepared_image(obs_id: str) -> GemmaVisualAnalysis:
     """Load prepared image bytes from disk and execute real Gemma multimodal inference.
 
-    If the image has not yet been collected on disk, returns an explicit unavailable status
-    rather than a misleading 404 or fabricated score.
+    Supports both canonical manifest observation IDs (e.g. OBS_A_TO_B_0001) and legacy IDs (OBS_1–5).
+    For unavailable gap points, returns an explicit honest unassessed/unavailable status
+    without fabricating model outputs.
     """
     if obs_id in ANALYSIS_CACHE:
         return ANALYSIS_CACHE[obs_id]
 
-    meta = PREPARED_IMAGES_MAP.get(obs_id)
-    if not meta:
+    obs_item = manifest_service.get_observation_by_id(obs_id, analysis_cache=ANALYSIS_CACHE)
+    legacy_meta = PREPARED_IMAGES_MAP.get(obs_id)
+
+    if not obs_item and not legacy_meta:
         raise ValueError(f"Unknown prepared observation ID: {obs_id}")
 
-    img_path = get_image_path(meta["filename"])
-    if not img_path or not os.path.exists(img_path):
-        # Explicit uncollected image status with honest provenance
+    # Case 1: Point is an uncollected gap (collection_status == 'unavailable')
+    if obs_item and (obs_item.collection_status == "unavailable" or not obs_item.image_available):
+        reason_text = obs_item.unavailable_reason or f"Observation {obs_id} was not collected in Street View."
         analysis = create_unavailable_analysis(
             image_id=obs_id,
-            location_id=meta["location"],
-            reason=f"Prepared ground-level Street View image '{meta['filename']}' has not yet been collected on disk.",
+            location_id=obs_item.location,
+            reason=reason_text,
+            status="image_unavailable",
+        )
+        ANALYSIS_CACHE[obs_id] = analysis
+        return analysis
+
+    # Case 2: Collected image on disk
+    filename_to_resolve = (
+        legacy_meta["filename"] if legacy_meta
+        else (obs_item.image_filename if obs_item and obs_item.image_filename else "")
+    )
+    img_path = get_image_path(filename_to_resolve)
+    if not img_path or not os.path.exists(img_path):
+        location_desc = legacy_meta["location"] if legacy_meta else (obs_item.location if obs_item else "")
+        analysis = create_unavailable_analysis(
+            image_id=obs_id,
+            location_id=location_desc,
+            reason=f"Prepared ground-level Street View image '{filename_to_resolve}' has not yet been collected on disk.",
             status="image_unavailable",
         )
         ANALYSIS_CACHE[obs_id] = analysis
@@ -345,33 +383,34 @@ def run_gemma_analysis_on_prepared_image(obs_id: str) -> GemmaVisualAnalysis:
 
     # OpenCV quality check
     passed, q_res, _ = assess_image_quality(image_bytes)
+    location_desc = legacy_meta["location"] if legacy_meta else (obs_item.location if obs_item else "")
     if not passed:
         analysis = create_unavailable_analysis(
             image_id=obs_id,
-            location_id=meta["location"],
+            location_id=location_desc,
             reason=f"Image failed quality check: {'; '.join(q_res.issues)}",
             status="quality_failed",
         )
         ANALYSIS_CACHE[obs_id] = analysis
         return analysis
 
-    # Execute Gemma multimodal inference
-    mime_type = "image/png" if meta["filename"].endswith(".png") else "image/jpeg"
+    # Execute genuine Gemma multimodal inference
+    mime_type = "image/png" if img_path.endswith(".png") else "image/jpeg"
     analysis, error_msg = analyze_pedestrian_image_multimodal(
         image_bytes=image_bytes,
         mime_type=mime_type,
         image_id=obs_id,
-        location_id=meta["location"],
+        location_id=location_desc,
     )
 
     if error_msg or analysis is None:
-        if settings.ALLOW_OFFLINE_DEMO_FALLBACK:
-            analysis = _create_mock_verified_analysis(obs_id, meta)
+        if settings.ALLOW_OFFLINE_DEMO_FALLBACK and (obs_id in PREPARED_IMAGES_MAP or obs_id in LEGACY_OBS_MAP):
+            analysis = _create_mock_verified_analysis(obs_id, legacy_meta or {"location": location_desc})
             analysis.inference_source = "offline_demo"
         else:
             analysis = create_unavailable_analysis(
                 image_id=obs_id,
-                location_id=meta["location"],
+                location_id=location_desc,
                 reason=f"Live model inference unavailable: {error_msg}",
                 status="runtime_unavailable",
             )

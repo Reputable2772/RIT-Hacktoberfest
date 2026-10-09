@@ -30,6 +30,7 @@ from backend.gemma import (
 )
 from backend.image_quality import assess_image_quality
 from backend.locations import FIXED_LOCATIONS, DemoLocation, get_all_locations
+from backend.manifest_service import manifest_service
 from backend.planner import (
     ANALYSIS_CACHE,
     PREPARED_IMAGES_MAP,
@@ -44,6 +45,9 @@ from backend.schemas import (
     GemmaVisualAnalysis,
     HealthResponse,
     ModelObservations,
+    ObservationCoverageSummary,
+    RouteCoverageReport,
+    StreetViewObservationItem,
 )
 from backend.transit_data import (
     ALL_JOURNEY_OPTIONS,
@@ -176,41 +180,43 @@ def get_journeys(
     return get_evaluated_journeys(sort_criterion=sort)
 
 
-@app.get("/api/observations", tags=["Visual Evidence"])
-def get_observations_list():
-    """Mode A: List prepared Street View observation points with current Gemma analysis status."""
-    items = []
-    for obs_id, meta in PREPARED_IMAGES_MAP.items():
-        img_path = get_image_path(meta["filename"])
-        file_exists = img_path is not None and os.path.exists(img_path)
-        analyzed = obs_id in ANALYSIS_CACHE
-        analysis_data = ANALYSIS_CACHE.get(obs_id)
+@app.get("/api/observations", response_model=List[StreetViewObservationItem], tags=["Visual Evidence"])
+def get_observations_list(
+    route_id: Optional[str] = Query(None, description="Filter by route: a_to_b, b_to_c, c_to_a"),
+    collection_status: Optional[str] = Query(None, description="Filter by status: collected, unavailable"),
+    legacy_only: bool = Query(False, description="Filter to the 5 legacy demo points"),
+) -> List[StreetViewObservationItem]:
+    """List manifest Street View observations (all 171 points or filtered) with live analysis status."""
+    return manifest_service.get_observations(
+        route_id=route_id,
+        collection_status=collection_status,
+        legacy_only=legacy_only,
+        analysis_cache=ANALYSIS_CACHE,
+    )
 
-        if analyzed:
-            status_str = "analysis_completed"
-        elif file_exists:
-            status_str = "ready_for_analysis"
-        else:
-            status_str = "image_uncollected"
 
-        items.append({
-            "id": obs_id,
-            "name": meta["name"],
-            "location": meta["location"],
-            "lat": meta["lat"],
-            "lon": meta["lon"],
-            "image_filename": meta["filename"],
-            "image_url": f"/api/images/{meta['filename']}",
-            "image_available": file_exists,
-            "status": status_str,
-            "analysis": analysis_data,
-        })
-    return items
+@app.get("/api/observations/summary", tags=["Visual Evidence"])
+def get_observations_summary():
+    """Return coverage summary across all 171 planned points and each route separately."""
+    return {
+        "overall": manifest_service.get_overall_summary(ANALYSIS_CACHE),
+        "routes": manifest_service.get_route_coverage_reports(ANALYSIS_CACHE),
+        "audit": manifest_service.audit_and_reconcile(),
+    }
+
+
+@app.get("/api/observations/{obs_id}", response_model=StreetViewObservationItem, tags=["Visual Evidence"])
+def get_single_observation(obs_id: str) -> StreetViewObservationItem:
+    """Get details and analysis status for a single observation (by canonical ID or legacy OBS_1–5)."""
+    item = manifest_service.get_observation_by_id(obs_id, analysis_cache=ANALYSIS_CACHE)
+    if not item:
+        raise HTTPException(status_code=404, detail=f"Observation '{obs_id}' not found.")
+    return item
 
 
 @app.post("/api/analyze-observation/{obs_id}", response_model=GemmaVisualAnalysis, tags=["Visual Evidence"])
 def analyze_prepared_observation(obs_id: str) -> GemmaVisualAnalysis:
-    """Mode A: Run Gemma multimodal inference on prepared image or return honest unavailable status."""
+    """Run Gemma multimodal inference on prepared image or return honest unavailable status."""
     try:
         return run_gemma_analysis_on_prepared_image(obs_id)
     except ValueError as ve:

@@ -132,4 +132,5 @@ def test_upload_and_analyze_custom_image(client):
     assert "sidewalk" in data
     assert "curb_ramps" in data
     assert "surface_damage" in data
-    assert data["calculated_accessibility_score"] > 0
+    assert 0.0 <= data["calculated_accessibility_score"] <= 100.0
+
