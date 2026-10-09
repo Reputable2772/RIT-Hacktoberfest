@@ -1,7 +1,7 @@
 """Pydantic schemas for request/response models and model observations."""
 
 from enum import Enum
-from typing import List, Optional
+from typing import Dict, List, Optional
 from pydantic import BaseModel, Field
 
 
@@ -15,6 +15,18 @@ class BarrierVisibility(str, Enum):
     CLEAR = "clear"
     PARTIAL = "partial"
     UNCERTAIN = "uncertain"
+
+
+class FeatureStatus(str, Enum):
+    PRESENT = "present"
+    ABSENT = "absent"
+    UNKNOWN = "unknown"
+
+
+class ConfidenceRating(str, Enum):
+    HIGH = "high"
+    MEDIUM = "medium"
+    LOW = "low"
 
 
 class VisibleBarrier(BaseModel):
@@ -84,3 +96,81 @@ class HealthResponse(BaseModel):
     app: str = "saakshi"
     version: str = "1.0.0"
     configured_model: str
+
+
+# --- MULTIMODAL GEMMA STRUCTURED PEDESTRIAN ACCESSIBILITY CRITERIA ---
+
+class AccessibilityCriterionFinding(BaseModel):
+    criterion: str = Field(..., description="Key identifier (sidewalk, curb_ramps, etc.)")
+    label: str = Field(..., description="Human-readable title")
+    status: FeatureStatus = Field(..., description="present, absent, or unknown")
+    confidence: ConfidenceRating = Field(..., description="high, medium, or low")
+    explanation: str = Field(..., description="Factual visual evidence from image")
+
+
+class GemmaVisualAnalysis(BaseModel):
+    image_id: str = Field(..., description="Unique image identifier")
+    location_id: Optional[str] = None
+    segment_id: Optional[str] = None
+    status: str = Field("completed", description="Analysis status: completed, image_unavailable, runtime_unavailable, unassessed")
+    inference_source: str = Field("unavailable", description="live_local_gemma, live_gemma_api, offline_demo, or unavailable")
+    model_used: str = Field(..., description="Identifier of the multimodal model executed")
+    evidence_status: Optional[str] = Field(None, description="High-level verdict: BARRIER, NO_BARRIER_OBSERVED, or INCONCLUSIVE")
+    sidewalk: AccessibilityCriterionFinding
+    curb_ramps: AccessibilityCriterionFinding
+    tactile_paving: AccessibilityCriterionFinding
+    pedestrian_crossings: AccessibilityCriterionFinding
+    obstructions: AccessibilityCriterionFinding
+    surface_damage: AccessibilityCriterionFinding
+    calculated_accessibility_score: float = Field(..., description="Composite 0-100 score")
+    summary: str = Field(..., description="Overall pedestrian verdict")
+    limitations: List[str] = Field(default_factory=list)
+
+
+# --- STREET VIEW MANIFEST OBSERVATION SCHEMAS ---
+
+class ObservationCoverageSummary(BaseModel):
+    total_planned: int = 0
+    collected: int = 0
+    unavailable: int = 0
+    analyzed: int = 0
+
+
+class StreetViewObservationItem(BaseModel):
+    id: str
+    route_id: str
+    direction: str
+    sequence_number: int
+    image_sequence_number: Optional[int] = None
+    name: str
+    location: str
+    lat: float
+    lon: float
+    heading: float
+    distance_along_route_m: float
+    nearest_feature: str
+    imagery_date: Optional[str] = None
+    image_filename: Optional[str] = None
+    image_url: Optional[str] = None
+    image_available: bool = False
+    collection_status: str  # "collected" or "unavailable"
+    unavailable_reason: Optional[str] = None
+    status: str  # "analysis_completed", "ready_for_analysis", "uncollected_gap"
+    analysis: Optional[GemmaVisualAnalysis] = None
+    is_usable_evidence: bool = True
+    usability_issue: Optional[str] = None
+
+
+class RouteCoverageReport(BaseModel):
+    route_id: str
+    direction: str
+    name: str
+    distance_meters: float
+    target_spacing_meters: float
+    total_planned: int
+    collected_count: int
+    unavailable_count: int
+    analyzed_count: int = 0
+    usable_evidence_count: int
+    image_directory: str
+
