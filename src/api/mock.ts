@@ -906,9 +906,10 @@ export async function mockAnalyzeImage(image: File): Promise<AnalyzeResponse> {
 
 // Legacy Mock Artifacts
 export const mockSamples: SampleImage[] = [
-  { id: 'sample-1', url: '/images/sample_barrier.jpg', label: 'Obstruction (Motorcycle & Delivery Boxes)' },
-  { id: 'sample-2', url: '/images/sample_clear.jpg', label: 'Clear Footpath (Unobstructed Paved Slabs)' },
-  { id: 'sample-3', url: '/images/sample_inconclusive.jpg', label: 'Low Light / Glare (Motion Blur & Shadow)' },
+  { id: 'sample-1', url: '/images/sample_barrier.jpg', label: 'Broken Footpath Slab & Open Trench' },
+  { id: 'sample-2', url: '/images/sample_clear.jpg', label: 'Clear Footpath (MG Road Metro Station)' },
+  { id: 'sample-3', url: '/images/sample_inconclusive.jpg', label: 'Missing Drain Cover & Curb Rubble' },
+  { id: 'sample-4', url: '/images/sample_posters.jpg', label: 'Narrow Compound Wall Footpath' },
 ];
 
 export const mockAnalyzeResponseBarrier: AnalyzeResponse = {

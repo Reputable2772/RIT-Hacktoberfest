@@ -94,10 +94,14 @@ def get_image(file_path: str):
     media_type = "image/png" if full_path.endswith(".png") else "image/jpeg"
     return FileResponse(full_path, media_type=media_type)
 
-# Mount static frontend directory
+# Mount static frontend directory and public images
 static_dir = os.path.join(base_dir, "backend", "static")
 os.makedirs(static_dir, exist_ok=True)
 app.mount("/static", StaticFiles(directory=static_dir), name="static")
+
+public_images_dir = os.path.join(base_dir, "public", "images")
+if os.path.exists(public_images_dir):
+    app.mount("/images", StaticFiles(directory=public_images_dir), name="public_images")
 
 
 # --- CORE HEALTH & SINGLE-IMAGE ANALYSIS (Task 1 contract preserved) ---
@@ -317,9 +321,10 @@ def get_benchmark() -> BenchmarkModel:
 def get_samples():
     """Return sample images for quick intake analysis."""
     return [
-        {"id": "barrier-1", "url": "/images/sample_barrier.jpg", "label": "Vehicle Blocking Sidewalk (MG Road)"},
-        {"id": "clear-1", "url": "/images/sample_clear.jpg", "label": "Clear Paved Footpath (Brigade Road)"},
-        {"id": "inconclusive-1", "url": "/images/sample_inconclusive.jpg", "label": "Shadowed / Glare Obstruction (Church St)"},
+        {"id": "barrier-1", "url": "/images/sample_barrier.jpg", "label": "Broken Footpath Slab & Open Trench"},
+        {"id": "clear-1", "url": "/images/sample_clear.jpg", "label": "Clear Footpath (MG Road Metro Station)"},
+        {"id": "hazard-1", "url": "/images/sample_rubble_drain.jpg", "label": "Missing Drain Cover & Curb Rubble"},
+        {"id": "narrow-1", "url": "/images/sample_posters.jpg", "label": "Narrow Compound Wall Footpath"},
     ]
 
 

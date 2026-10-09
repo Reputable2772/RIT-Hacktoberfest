@@ -303,7 +303,7 @@ export function Hero() {
               {/* Evidence Photograph */}
               <img
                 src="/images/hero_footpath.jpg"
-                alt="Documentary street-level photograph of an urban pedestrian sidewalk with pavement slabs, curb edges, and civic infrastructure"
+                alt="Documentary street-level photograph of MG Road Metro Station pedestrian concourse and walkway"
                 style={{
                   width: '100%',
                   height: 'auto',
