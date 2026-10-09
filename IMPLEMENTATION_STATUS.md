@@ -47,15 +47,15 @@ Once launched, open your browser to:
 - **Mode B Custom Location Planning**: Arbitrary coordinate routing across Bengaluru with predefined trip presets (e.g., Richmond Circle → Commercial Street, Indiranagar → Vidhana Soudha) and input coordinate bounds validation.
 - **BMTC & BMRCL GTFS Spatial Matching**: Real-time nearest-stop discovery over `bmtc-gtfs.zip` and `bmrcl-gtfs.zip` `stops.txt`.
 - **Image Quality & Safety Filtering**: Automated pre-inference gate rejecting invalid mime types (`text/plain`), corrupt files, empty uploads, and blurry images (Laplacian variance < 100.0).
-- **Security & Path Traversal Hardening**: Protected image serving endpoint `GET /api/images/{filename}` preventing directory traversal attacks (`..`), non-image extensions, and unauthorized file reads.
+- **Security & Path Traversal Hardening**: Protected image serving endpoint `GET /api/images/{filename}` and `ManifestService.resolve_image_path()` preventing directory traversal attacks (`..`), non-image extensions, and unauthorized file reads.
 - **Graceful Offline Degradation**: When live inference runtimes are absent, the system honestly reports `runtime_unavailable` / `INCONCLUSIVE` (neutral score `50.0`) without fabricating fake barrier predictions.
-- **Automated Test Suite**: 69 / 69 tests passing with **100% statement coverage** across all 12 backend modules.
+- **Manifest-Driven Observation Integration**: All 171 observations across routes A→B, B→C, and C→A are discoverable via `GET /api/observations`, with pin-level rendering (blue for collected captures, amber for gaps) and sequential modal step-through.
+- **Automated Test Suite**: **92 / 92 tests passing** with 100% pass rate across all unit, integration, and regression suites.
 
 ### Working with Limitations
 - **Mode B Transit Schedules**: Performs spatial nearest-stop discovery and haversine transit travel-time estimation (~15 km/h bus, ~1.25 m/s walking) rather than full multi-trip graph routing over `stop_times.txt` and `calendar.txt`.
-- **Street View Image Coverage**: 136 real readable PNGs collected and cataloged across 171 planned corridor points. 35 points encountered Google Maps capture timeouts in restricted parks/subways and are documented as explicit coverage gaps in [`data/street_view_manifest.json`](file:///home/wickedwizard/Documents/Coding/Hackathons/Hacktoberfest/Project/data/street_view_manifest.json).
-
-### Blocked by External Dependencies
+- **Street View Image Coverage**: 136 real readable PNGs collected and cataloged across 171 planned corridor points. 35 points encountered Google Maps capture timeouts in restricted parks/subways and are documented as explicit coverage gaps in [`data/street_view_manifest.json`](file:///home/wickedwizard/Documents/Coding/Hackathons/Hacktoberfest/Project/data/street_view_manifest.json). Kept strictly unassessed without fabricated imagery or scores.
+- **Additional Offline Scrapes**: Church Street & Corporation Circle turn-by-turn route steps 1–12 stored offline in [`data/additional_scrapes/church_to_corporation/`](file:///home/wickedwizard/Documents/Coding/Hackathons/Hacktoberfest/Project/data/additional_scrapes/church_to_corporation/) without altering production codebase.
 - **Live Multimodal Gemma Inference**: Blocked by the absence of an active OpenAI-compatible local edge vision model server on `localhost` or a valid `GEMINI_API_KEY` secret. Real image bytes were fed to the pipeline during verification; the pipeline verified proper structured failure handling and returned `runtime_unavailable`.
 
 ### Broken / Not Implemented

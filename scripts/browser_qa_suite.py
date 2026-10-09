@@ -129,17 +129,38 @@ def run_browser_qa():
         page.screenshot(path=ss2)
         results["screenshots"]["evidence_modal"] = ss2
 
+        # Test sequential observation navigation if controls are visible
+        btn_next = page.locator("#btnNextObs")
+        btn_prev = page.locator("#btnPrevObs")
+        if btn_next.is_visible() and btn_prev.is_visible():
+            orig_seq = page.inner_text("#evSeqInfo")
+            btn_next.click()
+            time.sleep(0.4)
+            new_seq = page.inner_text("#evSeqInfo")
+            assert new_seq != orig_seq, f"Expected sequence to change from {orig_seq}, got {new_seq}"
+            btn_prev.click()
+            time.sleep(0.4)
+            results["tests"]["sequential_navigation"] = {"status": "PASS", "navigated_to": new_seq}
+
         # Trigger analysis
         btn_gemma = page.locator("#btnRunGemma")
         if btn_gemma.is_visible():
-            btn_gemma.click()
-            time.sleep(1.0)
+            with page.expect_response("**/api/analyze-observation/*", timeout=45000) as resp_info:
+                btn_gemma.click()
+            resp = resp_info.value
+            assert resp.status == 200, f"Expected 200, got {resp.status}"
+            page.wait_for_selector("#gemmaResultsArea .crit-row", timeout=15000)
             btn_text = btn_gemma.inner_text()
+            criteria_shown = page.is_visible("#gemmaResultsArea")
             results["tests"]["gemma_analysis_action"] = {
                 "status": "PASS",
                 "button_text": btn_text,
-                "criteria_visible": page.is_visible("#gemmaResultsArea"),
+                "criteria_visible": criteria_shown,
             }
+            if criteria_shown:
+                ss2_analyzed = os.path.join(ARTIFACTS_DIR, "qa_02_evidence_modal_analyzed.png")
+                page.screenshot(path=ss2_analyzed)
+                results["screenshots"]["evidence_modal_analyzed"] = ss2_analyzed
 
         # Close evidence panel
         page.click(".close-btn")
@@ -206,8 +227,9 @@ def run_browser_qa():
 
         # 2. Blurry image upload
         page.set_input_files("#fileInput", os.path.join(PROJECT_DIR, "tests/test_blurry.jpg"))
-        page.click("#btnUploadAnalyze")
-        time.sleep(0.8)
+        with page.expect_response("**/api/upload-and-analyze*", timeout=20000):
+            page.click("#btnUploadAnalyze")
+        time.sleep(0.5)
         upload_err2 = page.inner_text("#uploadResultBanner")
         assert "quality" in upload_err2.lower() or "rejected" in upload_err2.lower(), f"Expected quality rejection, got: {upload_err2}"
         results["tests"]["upload_blurry_image"] = {"status": "PASS", "response": upload_err2}
@@ -215,8 +237,11 @@ def run_browser_qa():
         # 3. Valid image upload
         valid_img = os.path.join(PROJECT_DIR, "data/street_view/a_to_b/0001.png")
         page.set_input_files("#fileInput", valid_img)
-        page.click("#btnUploadAnalyze")
-        time.sleep(1.0)
+        with page.expect_response("**/api/upload-and-analyze*", timeout=45000) as upload_resp_info:
+            page.click("#btnUploadAnalyze")
+        upload_resp = upload_resp_info.value
+        assert upload_resp.status == 200, f"Expected 200, got {upload_resp.status}"
+        time.sleep(0.5)
         upload_ok = page.inner_text("#uploadResultBanner")
         assert len(upload_ok) > 0, "Upload banner empty"
         results["tests"]["upload_valid_image"] = {"status": "PASS", "response": upload_ok}
@@ -237,7 +262,28 @@ def run_browser_qa():
         page.set_viewport_size({"width": 1280, "height": 800})
         time.sleep(0.3)
 
-        # Page reload sanity
+        print("=== STEP 9: Force Routing Fallback and Verify Explanation Banner ===")
+        def handle_fallback_journeys(route):
+            response = route.fetch()
+            data = response.json()
+            for corridor, options in data.items():
+                for opt in options:
+                    opt["computation_mode"] = "precompiled_fallback"
+                    opt["fallback_reason"] = "forced_fallback"
+                    opt["fallback_explanation"] = "Simulated routing network failure. Deterministic precompiled baseline activated."
+            route.fulfill(json=data)
+
+        page.route("**/api/journeys*", handle_fallback_journeys)
+        page.reload(wait_until="networkidle")
+        card_text = page.locator(".route-card").first.inner_text()
+        assert "precompiled fallback" in card_text.lower(), f"Fallback banner missing in card: {card_text}"
+        ss6 = os.path.join(ARTIFACTS_DIR, "qa_06_fallback_activated.png")
+        page.screenshot(path=ss6)
+        results["screenshots"]["fallback_activated"] = ss6
+        results["tests"]["forced_fallback_ui"] = {"status": "PASS", "explanation_visible": True}
+        page.unroute("**/api/journeys*", handle_fallback_journeys)
+
+        # Final page reload sanity
         page.reload(wait_until="networkidle")
         assert "Saakshi" in page.title(), "Page reload failed"
         results["tests"]["page_reload"] = {"status": "PASS"}
