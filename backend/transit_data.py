@@ -76,6 +76,11 @@ class JourneyOption(BaseModel):
     data_provenance: Dict[str, str] = Field(default_factory=dict)
     recommendation_reasons: List[str] = Field(default_factory=list)
     limitations: List[str] = Field(default_factory=list)
+    observation_coverage: Dict[str, int] = Field(
+        default_factory=dict,
+        description="Coverage counts: planned, collected, unavailable, analyzed",
+    )
+
 
 
 # --- ROUTE CATALOG FOR DIRECTED JOURNEYS ---
