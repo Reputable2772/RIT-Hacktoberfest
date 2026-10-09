@@ -1,0 +1,129 @@
+{
+  "route_title": "Church Street to Corporation Circle Walking Route",
+  "captured_at": "2026-10-09T09:40:38Z",
+  "source": "Google Maps Active Route via Antigravity Chrome Agent",
+  "output_directory": "data/additional_scrapes/church_to_corporation/",
+  "steps": [
+    {
+      "step_number": 2,
+      "header": "Step 2 of 12",
+      "instruction": "At The Konkan (Est. 2017), continue onto Link Rd",
+      "distance": "120 m",
+      "imagery_date": "Feb 2026",
+      "filename": "step_02_step_2_of_12_at_the_konkan_est_2017_continue_onto_.png",
+      "relative_path": "data/additional_scrapes/church_to_corporation/step_02_step_2_of_12_at_the_konkan_est_2017_continue_onto_.png",
+      "filesize_bytes": 1811306,
+      "url": "https://www.google.com/maps/@12.9758055,77.6017544,938a,75y,275.53h,90t/am=t/data=!3m10!1e1!3m8!1sPshnYJWyeosKIvF7Uvhd5w!2e0!6shttps:%2F%2Fstreetviewpixels-pa.clients6.google.com%2Fv1%2Fthumbnail%3Fcb_client%3Dmaps_sv.tactile%26w%3D900%26h%3D600%26pitch%3D0%26panoid%3DPshnYJWyeosKIvF7Uvhd5w%26yaw%3D275.53436!7i16384!8i8192!9m2!1b1!2i42?entry=ttu&g_ep=EgoyMDI2MTAwNi4wIKXMDSoASAFQAw%3D%3D"
+    },
+    {
+      "step_number": 3,
+      "header": "Step 3 of 12",
+      "instruction": "Slight left onto Mahatma Gandhi Rd",
+      "distance": "170 m",
+      "imagery_date": "Feb 2026",
+      "filename": "step_03_step_3_of_12_slight_left_onto_mahatma_gandhi_rd.png",
+      "relative_path": "data/additional_scrapes/church_to_corporation/step_03_step_3_of_12_slight_left_onto_mahatma_gandhi_rd.png",
+      "filesize_bytes": 1719759,
+      "url": "https://www.google.com/maps/@12.9764173,77.6009872,940a,75y,302.53h,90t/am=t/data=!3m10!1e1!3m8!1sz2Di0WkoAOmV35JyVEE70Q!2e0!6shttps:%2F%2Fstreetviewpixels-pa.clients6.google.com%2Fv1%2Fthumbnail%3Fcb_client%3Dmaps_sv.tactile%26w%3D900%26h%3D600%26pitch%3D0%26panoid%3Dz2Di0WkoAOmV35JyVEE70Q%26yaw%3D302.53156!7i16384!8i8192!9m2!1b1!2i42?entry=ttu&g_ep=EgoyMDI2MTAwNi4wIKXMDSoASAFQAw%3D%3D"
+    },
+    {
+      "step_number": 4,
+      "header": "Step 4 of 12",
+      "instruction": "Continue onto Kasturba Rd",
+      "distance": "800 m",
+      "imagery_date": "Feb 2026",
+      "filename": "step_04_step_4_of_12_continue_onto_kasturba_rd.png",
+      "relative_path": "data/additional_scrapes/church_to_corporation/step_04_step_4_of_12_continue_onto_kasturba_rd.png",
+      "filesize_bytes": 1480025,
+      "url": "https://www.google.com/maps/@12.9765471,77.5994654,939a,75y,244.46h,90t/am=t/data=!3m10!1e1!3m8!1swT5s_VNciVnNcL_87ZCf7w!2e0!6shttps:%2F%2Fstreetviewpixels-pa.clients6.google.com%2Fv1%2Fthumbnail%3Fcb_client%3Dmaps_sv.tactile%26w%3D900%26h%3D600%26pitch%3D0%26panoid%3DwT5s_VNciVnNcL_87ZCf7w%26yaw%3D244.4635!7i16384!8i8192!9m2!1b1!2i42?entry=ttu&g_ep=EgoyMDI2MTAwNi4wIKXMDSoASAFQAw%3D%3D"
+    },
+    {
+      "step_number": 5,
+      "header": "Step 5 of 12",
+      "instruction": "Continue onto Vittal Mallya Rd",
+      "distance": "12 m",
+      "imagery_date": null,
+      "filename": "step_05_step_5_of_12_continue_onto_vittal_mallya_rd.png",
+      "relative_path": "data/additional_scrapes/church_to_corporation/step_05_step_5_of_12_continue_onto_vittal_mallya_rd.png",
+      "filesize_bytes": 306147,
+      "url": "https://www.google.com/maps/@12.971988,77.5939734,2613a,13.1y/am=t/data=!3m7!1e2!3m5!1sdata:image%2Fpng;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVQI12NgYGAAAAAEAAEnNCcKAAAAAElFTkSuQmCC!3e12!9m2!1b1!2i42?entry=ttu&g_ep=EgoyMDI2MTAwNi4wIKXMDSoASAFQAw%3D%3D"
+    },
+    {
+      "step_number": 6,
+      "header": "Step 6 of 12",
+      "instruction": "Turn right toward Kasturba Rd",
+      "distance": "44 m",
+      "imagery_date": "Feb 2026",
+      "filename": "step_06_step_6_of_12_turn_right_toward_kasturba_rd.png",
+      "relative_path": "data/additional_scrapes/church_to_corporation/step_06_step_6_of_12_turn_right_toward_kasturba_rd.png",
+      "filesize_bytes": 1824362,
+      "url": "https://www.google.com/maps/@12.9719312,77.5940215,927a,75y,193.12h,90t/am=t/data=!3m10!1e1!3m8!1s4r7hWwfrZJ5y_QWavM8ZIA!2e0!6shttps:%2F%2Fstreetviewpixels-pa.clients6.google.com%2Fv1%2Fthumbnail%3Fcb_client%3Dmaps_sv.tactile%26w%3D900%26h%3D600%26pitch%3D0%26panoid%3D4r7hWwfrZJ5y_QWavM8ZIA%26yaw%3D193.11784!7i16384!8i8192!9m2!1b1!2i42?entry=ttu&g_ep=EgoyMDI2MTAwNi4wIKXMDSoASAFQAw%3D%3D"
+    },
+    {
+      "step_number": 7,
+      "header": "Step 7 of 12",
+      "instruction": "Slight left onto Kasturba Rd",
+      "distance": "650 m",
+      "imagery_date": "Feb 2026",
+      "filename": "step_07_step_7_of_12_slight_left_onto_kasturba_rd.png",
+      "relative_path": "data/additional_scrapes/church_to_corporation/step_07_step_7_of_12_slight_left_onto_kasturba_rd.png",
+      "filesize_bytes": 1879004,
+      "url": "https://www.google.com/maps/@12.9718767,77.5938979,927a,75y,265.81h,90t/am=t/data=!3m10!1e1!3m8!1sGNn0wPSI9aksFttMEqPdeA!2e0!6shttps:%2F%2Fstreetviewpixels-pa.clients6.google.com%2Fv1%2Fthumbnail%3Fcb_client%3Dmaps_sv.tactile%26w%3D900%26h%3D600%26pitch%3D0%26panoid%3DGNn0wPSI9aksFttMEqPdeA%26yaw%3D265.80627!7i16384!8i8192!9m2!1b1!2i42?entry=ttu&g_ep=EgoyMDI2MTAwNi4wIKXMDSoASAFQAw%3D%3D"
+    },
+    {
+      "step_number": 8,
+      "header": "Step 8 of 12",
+      "instruction": "Turn left toward Devanga Hostel Rd",
+      "distance": "19 m",
+      "imagery_date": "Feb 2026",
+      "filename": "step_08_step_8_of_12_turn_left_toward_devanga_hostel_rd.png",
+      "relative_path": "data/additional_scrapes/church_to_corporation/step_08_step_8_of_12_turn_left_toward_devanga_hostel_rd.png",
+      "filesize_bytes": 1586509,
+      "url": "https://www.google.com/maps/@12.9680824,77.5891856,927a,75y,227.53h,90t/am=t/data=!3m10!1e1!3m8!1sHgsz2aglb-C3UpFkGPe6xw!2e0!6shttps:%2F%2Fstreetviewpixels-pa.clients6.google.com%2Fv1%2Fthumbnail%3Fcb_client%3Dmaps_sv.tactile%26w%3D900%26h%3D600%26pitch%3D0%26panoid%3DHgsz2aglb-C3UpFkGPe6xw%26yaw%3D227.5284!7i16384!8i8192!9m2!1b1!2i42?entry=ttu&g_ep=EgoyMDI2MTAwNi4wIKXMDSoASAFQAw%3D%3D"
+    },
+    {
+      "step_number": 9,
+      "header": "Step 9 of 12",
+      "instruction": "Slight right toward Devanga Hostel Rd",
+      "distance": "47 m",
+      "imagery_date": "Feb 2026",
+      "filename": "step_09_step_9_of_12_slight_right_toward_devanga_hostel_rd.png",
+      "relative_path": "data/additional_scrapes/church_to_corporation/step_09_step_9_of_12_slight_right_toward_devanga_hostel_rd.png",
+      "filesize_bytes": 1600299,
+      "url": "https://www.google.com/maps/@12.9679885,77.5890045,927a,75y,164.28h,90t/am=t/data=!3m10!1e1!3m8!1s4tT0dom-FwWRScY3e54qpw!2e0!6shttps:%2F%2Fstreetviewpixels-pa.clients6.google.com%2Fv1%2Fthumbnail%3Fcb_client%3Dmaps_sv.tactile%26w%3D900%26h%3D600%26pitch%3D0%26panoid%3D4tT0dom-FwWRScY3e54qpw%26yaw%3D164.27502!7i16384!8i8192!9m2!1b1!2i42?entry=ttu&g_ep=EgoyMDI2MTAwNi4wIKXMDSoASAFQAw%3D%3D"
+    },
+    {
+      "step_number": 10,
+      "header": "Step 10 of 12",
+      "instruction": "Turn left onto Devanga Hostel Rd",
+      "distance": "9 m",
+      "imagery_date": null,
+      "filename": "step_10_step_10_of_12_turn_left_onto_devanga_hostel_rd.png",
+      "relative_path": "data/additional_scrapes/church_to_corporation/step_10_step_10_of_12_turn_left_onto_devanga_hostel_rd.png",
+      "filesize_bytes": 344723,
+      "url": "https://www.google.com/maps/@12.9675936,77.5887742,2613a,13.1y/am=t/data=!3m7!1e2!3m5!1sdata:image%2Fpng;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVQI12NgYGAAAAAEAAEnNCcKAAAAAElFTkSuQmCC!3e12!9m2!1b1!2i42?entry=ttu&g_ep=EgoyMDI2MTAwNi4wIKXMDSoASAFQAw%3D%3D"
+    },
+    {
+      "step_number": 11,
+      "header": "Step 11 of 12",
+      "instruction": "Turn right onto Fort Rd/Raja Ram Mohan Roy Rd",
+      "distance": "49 m",
+      "imagery_date": null,
+      "filename": "step_11_step_11_of_12_turn_right_onto_fort_rd_raja_ram_moh.png",
+      "relative_path": "data/additional_scrapes/church_to_corporation/step_11_step_11_of_12_turn_right_onto_fort_rd_raja_ram_moh.png",
+      "filesize_bytes": 345616,
+      "url": "https://www.google.com/maps/@12.9675562,77.588796,2613a,13.1y/am=t/data=!3m7!1e2!3m5!1sdata:image%2Fpng;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVQI12NgYGAAAAAEAAEnNCcKAAAAAElFTkSuQmCC!3e12!9m2!1b1!2i42?entry=ttu&g_ep=EgoyMDI2MTAwNi4wIKXMDSoASAFQAw%3D%3D"
+    },
+    {
+      "step_number": 12,
+      "header": "Step 12 of 12",
+      "instruction": "Corporation Circle",
+      "distance": "Bengaluru, Karnataka",
+      "imagery_date": null,
+      "filename": "step_12_step_12_of_12_corporation_circle.png",
+      "relative_path": "data/additional_scrapes/church_to_corporation/step_12_step_12_of_12_corporation_circle.png",
+      "filesize_bytes": 345805,
+      "url": "https://www.google.com/maps/@12.9673858,77.5884479,2613a,13.1y/am=t/data=!3m7!1e2!3m5!1sdata:image%2Fpng;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVQI12NgYGAAAAAEAAEnNCcKAAAAAElFTkSuQmCC!3e12!9m2!1b1!2i42?entry=ttu&g_ep=EgoyMDI2MTAwNi4wIKXMDSoASAFQAw%3D%3D"
+    }
+  ]
+}
