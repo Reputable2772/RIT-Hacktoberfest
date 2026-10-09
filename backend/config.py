@@ -12,6 +12,8 @@ class Settings:
     GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY", "")
     # GEMINI_MODEL takes precedence; GEMMA_MODEL accepted as alias/fallback
     GEMINI_MODEL: str = os.getenv("GEMINI_MODEL") or os.getenv("GEMMA_MODEL") or "gemma-4-26b-a4b-it"
+    GEMMA_LOCAL_ENDPOINT: str = os.getenv("GEMMA_LOCAL_ENDPOINT", "")
+    ALLOW_OFFLINE_DEMO_FALLBACK: bool = os.getenv("ALLOW_OFFLINE_DEMO_FALLBACK", "false").lower() in ("true", "1", "yes")
     MAX_UPLOAD_MB: int = int(os.getenv("MAX_UPLOAD_MB", "10"))
     ALLOWED_ORIGINS: List[str] = [
         origin.strip()
