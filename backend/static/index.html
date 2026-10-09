@@ -1,0 +1,1288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Saakshi — Bengaluru Multimodal Pedestrian Accessibility Planner</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+
+  <style>
+    :root {
+      --bg-dark: #090d16;
+      --bg-card: rgba(16, 24, 40, 0.85);
+      --bg-card-border: rgba(255, 255, 255, 0.08);
+      --bg-accent: rgba(30, 41, 59, 0.7);
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --text-dim: #64748b;
+      --purple: #a855f7;
+      --purple-glow: rgba(168, 85, 247, 0.25);
+      --blue: #38bdf8;
+      --emerald: #10b981;
+      --amber: #f59e0b;
+      --rose: #f43f5e;
+      --radius-lg: 16px;
+      --radius-md: 10px;
+      --radius-sm: 6px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Outfit', -apple-system, sans-serif;
+    }
+
+    body {
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      height: 100vh;
+      max-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    header {
+      background: rgba(15, 23, 42, 0.75);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--bg-card-border);
+      padding: 16px 28px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: sticky;
+      top: 0;
+      z-index: 1000;
+      flex-shrink: 0;
+    }
+
+    .logo-area {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .logo-badge {
+      background: linear-gradient(135deg, #8b5cf6, #ec4899);
+      color: white;
+      font-weight: 800;
+      font-size: 18px;
+      padding: 6px 14px;
+      border-radius: var(--radius-sm);
+      letter-spacing: 1px;
+      box-shadow: 0 0 20px rgba(168, 85, 247, 0.4);
+    }
+
+    .title-group h1 {
+      font-size: 20px;
+      font-weight: 700;
+      background: linear-gradient(to right, #ffffff, #cbd5e1);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .title-group p {
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .mode-switch {
+      display: flex;
+      background: rgba(15, 23, 42, 0.9);
+      border: 1px solid var(--bg-card-border);
+      border-radius: 30px;
+      padding: 4px;
+    }
+
+    .mode-btn {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      padding: 8px 18px;
+      border-radius: 24px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .mode-btn.active {
+      background: linear-gradient(135deg, #7c3aed, #a855f7);
+      color: white;
+      box-shadow: 0 4px 12px var(--purple-glow);
+    }
+
+    .main-layout {
+      display: grid;
+      grid-template-columns: 460px 1fr;
+      flex: 1;
+      height: calc(100vh - 75px);
+      max-height: calc(100vh - 75px);
+      min-height: 0;
+      overflow: hidden;
+    }
+
+    .sidebar {
+      background: rgba(13, 20, 36, 0.95);
+      border-right: 1px solid var(--bg-card-border);
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+      height: 100%;
+      max-height: 100%;
+      min-height: 0;
+      padding: 20px;
+      gap: 20px;
+    }
+
+    .section-title {
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 1.2px;
+      color: var(--text-dim);
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    .journey-selector {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+    }
+
+    .journey-tab {
+      background: rgba(30, 41, 59, 0.5);
+      border: 1px solid var(--bg-card-border);
+      border-radius: var(--radius-md);
+      padding: 10px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .journey-tab:hover {
+      border-color: rgba(168, 85, 247, 0.4);
+      background: rgba(30, 41, 59, 0.8);
+    }
+
+    .journey-tab.active {
+      border-color: var(--purple);
+      background: rgba(168, 85, 247, 0.15);
+      box-shadow: 0 0 15px rgba(168, 85, 247, 0.2);
+    }
+
+    .journey-tab .tag {
+      font-size: 15px;
+      font-weight: 800;
+      color: var(--blue);
+    }
+
+    .journey-tab .desc {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    .filter-bar {
+      display: flex;
+      gap: 6px;
+      overflow-x: auto;
+      padding-bottom: 4px;
+    }
+
+    .filter-btn {
+      background: rgba(30, 41, 59, 0.5);
+      border: 1px solid var(--bg-card-border);
+      color: var(--text-muted);
+      padding: 6px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.2s;
+    }
+
+    .filter-btn:hover {
+      color: white;
+    }
+
+    .filter-btn.active {
+      background: var(--blue);
+      color: #0f172a;
+      font-weight: 700;
+      border-color: var(--blue);
+    }
+
+    .route-card {
+      background: var(--bg-card);
+      border: 1px solid var(--bg-card-border);
+      border-radius: var(--radius-lg);
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      transition: all 0.2s;
+      cursor: pointer;
+    }
+
+    .route-card:hover {
+      border-color: rgba(168, 85, 247, 0.5);
+      transform: translateY(-2px);
+    }
+
+    .route-card.selected {
+      border-color: var(--purple);
+      box-shadow: 0 0 20px var(--purple-glow);
+    }
+
+    .route-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+    }
+
+    .route-mode-badge {
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .mode-metro { background: rgba(168, 85, 247, 0.2); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.4); }
+    .mode-bus { background: rgba(56, 189, 248, 0.2); color: #7dd3fc; border: 1px solid rgba(56, 189, 248, 0.4); }
+    .mode-walking { background: rgba(16, 185, 129, 0.2); color: #6ee7b7; border: 1px solid rgba(16, 185, 129, 0.4); }
+    .mode-mixed { background: rgba(245, 158, 11, 0.2); color: #fcd34d; border: 1px solid rgba(245, 158, 11, 0.4); }
+
+    .route-title {
+      font-size: 16px;
+      font-weight: 700;
+      color: white;
+    }
+
+    .route-summary {
+      font-size: 12px;
+      color: var(--text-muted);
+      line-height: 1.4;
+    }
+
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      background: rgba(15, 23, 42, 0.6);
+      border-radius: var(--radius-md);
+      padding: 10px 8px;
+      text-align: center;
+      gap: 4px;
+    }
+
+    .metric-item .val {
+      font-size: 15px;
+      font-weight: 700;
+      color: white;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .metric-item .lbl {
+      font-size: 10px;
+      color: var(--text-dim);
+      margin-top: 2px;
+      text-transform: uppercase;
+    }
+
+    .score-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 8px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    .score-high { background: rgba(16, 185, 129, 0.2); color: #34d399; }
+    .score-med { background: rgba(245, 158, 11, 0.2); color: #fbbf24; }
+    .score-low { background: rgba(244, 63, 94, 0.2); color: #fb7185; }
+    .score-unassessed { background: rgba(100, 116, 139, 0.2); color: #94a3b8; border: 1px solid rgba(148, 163, 184, 0.3); }
+
+    .route-segments {
+      border-top: 1px solid var(--bg-card-border);
+      padding-top: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .seg-step {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      font-size: 12px;
+    }
+
+    .seg-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--purple);
+      margin-top: 4px;
+      flex-shrink: 0;
+    }
+
+    .seg-details {
+      flex: 1;
+      color: var(--text-muted);
+    }
+
+    .seg-details strong {
+      color: var(--text-main);
+    }
+
+    .content-area {
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      height: 100%;
+      max-height: 100%;
+      min-height: 0;
+      overflow: hidden;
+    }
+
+    #map {
+      flex: 1;
+      background: #111827;
+      width: 100%;
+      height: 100%;
+    }
+
+    .evidence-panel {
+      position: absolute;
+      bottom: 20px;
+      right: 20px;
+      width: 480px;
+      max-height: calc(100% - 40px);
+      background: rgba(13, 20, 36, 0.92);
+      backdrop-filter: blur(16px);
+      border: 1px solid var(--bg-card-border);
+      border-radius: var(--radius-lg);
+      padding: 20px;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6);
+      z-index: 2000;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      overflow-y: auto;
+    }
+
+    .evidence-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .evidence-header h3 {
+      font-size: 16px;
+      font-weight: 700;
+      color: white;
+    }
+
+    .close-btn {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      font-size: 18px;
+      cursor: pointer;
+    }
+
+    .evidence-img-container {
+      position: relative;
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      border: 1px solid var(--bg-card-border);
+      background: black;
+      height: 220px;
+    }
+
+    .evidence-img-container img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .img-badge {
+      position: absolute;
+      bottom: 10px;
+      left: 10px;
+      background: rgba(0, 0, 0, 0.75);
+      backdrop-filter: blur(8px);
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 600;
+      color: white;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .gemma-action-btn {
+      background: linear-gradient(135deg, #7c3aed, #a855f7);
+      color: white;
+      border: none;
+      padding: 10px 16px;
+      border-radius: var(--radius-md);
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: all 0.2s;
+      box-shadow: 0 4px 15px var(--purple-glow);
+    }
+
+    .gemma-action-btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 6px 20px var(--purple-glow);
+    }
+
+    .gemma-action-btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .criteria-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .crit-row {
+      background: rgba(30, 41, 59, 0.5);
+      border: 1px solid var(--bg-card-border);
+      border-radius: var(--radius-md);
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .crit-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .crit-status {
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-size: 10px;
+      text-transform: uppercase;
+      font-weight: 800;
+    }
+
+    .stat-present { background: rgba(16, 185, 129, 0.2); color: #34d399; }
+    .stat-absent { background: rgba(244, 63, 94, 0.2); color: #fb7185; }
+    .stat-unknown { background: rgba(148, 163, 184, 0.2); color: #94a3b8; }
+
+    .crit-desc {
+      font-size: 11px;
+      color: var(--text-muted);
+      line-height: 1.35;
+    }
+
+    .custom-input-card {
+      background: var(--bg-card);
+      border: 1px solid var(--bg-card-border);
+      border-radius: var(--radius-lg);
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .form-group label {
+      font-size: 11px;
+      text-transform: uppercase;
+      font-weight: 700;
+      color: var(--text-dim);
+    }
+
+    .form-input {
+      background: rgba(15, 23, 42, 0.8);
+      border: 1px solid var(--bg-card-border);
+      color: white;
+      padding: 8px 12px;
+      border-radius: var(--radius-sm);
+      font-size: 13px;
+    }
+
+    .upload-zone {
+      border: 2px dashed rgba(168, 85, 247, 0.4);
+      background: rgba(168, 85, 247, 0.05);
+      border-radius: var(--radius-md);
+      padding: 16px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .upload-zone:hover {
+      border-color: var(--purple);
+      background: rgba(168, 85, 247, 0.1);
+    }
+
+    .provenance-tag {
+      font-size: 10px;
+      color: var(--text-dim);
+      font-family: 'JetBrains Mono', monospace;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .provenance-tag span {
+      background: rgba(30, 41, 59, 0.8);
+      padding: 2px 6px;
+      border-radius: 4px;
+      color: var(--text-muted);
+    }
+
+    .banner-success {
+      background: rgba(16, 185, 129, 0.15);
+      border: 1px solid var(--emerald);
+      color: #6ee7b7;
+    }
+    .banner-error {
+      background: rgba(244, 63, 94, 0.15);
+      border: 1px solid var(--rose);
+      color: #fda4af;
+    }
+    .banner-warning {
+      background: rgba(245, 158, 11, 0.15);
+      border: 1px solid var(--amber);
+      color: #fde68a;
+    }
+
+    @media (max-width: 900px) {
+      body {
+        height: auto;
+        max-height: none;
+        overflow-y: auto;
+      }
+      .main-layout {
+        grid-template-columns: 1fr;
+        height: auto;
+        max-height: none;
+        overflow: visible;
+      }
+      .content-area {
+        height: 380px;
+        max-height: 380px;
+        order: -1;
+      }
+      .sidebar {
+        height: auto;
+        max-height: none;
+        overflow: visible;
+      }
+      header {
+        flex-direction: column;
+        gap: 12px;
+        align-items: flex-start;
+      }
+      .evidence-panel {
+        width: calc(100% - 40px);
+        left: 20px;
+        right: 20px;
+        bottom: 20px;
+        max-height: 80%;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="logo-area">
+      <div class="logo-badge">SAAKSHI</div>
+      <div class="title-group">
+        <h1>Bengaluru Multimodal Pedestrian Accessibility Planner</h1>
+        <p>BMRCL Metro & BMTC GTFS Feeds &bull; Gemma 4 Multimodal Vision &bull; Evidence Gate</p>
+      </div>
+    </div>
+    <div class="mode-switch">
+      <button class="mode-btn active" id="btnModeA" onclick="switchMode('A')">Mode A: Demo (A, B, C)</button>
+      <button class="mode-btn" id="btnModeB" onclick="switchMode('B')">Mode B: Custom Locations</button>
+    </div>
+  </header>
+
+  <div class="main-layout">
+    <!-- SIDEBAR: Routing & Route Comparisons -->
+    <div class="sidebar" id="sidebarPanel">
+      
+      <!-- MODE A CONTROLS -->
+      <div id="modeAControls">
+        <div class="section-title">Select Directed Journey</div>
+        <div class="journey-selector">
+          <div class="journey-tab active" id="tab_AB" onclick="selectJourney('A->B')">
+            <div class="tag">A &rarr; B</div>
+            <div class="desc">MG Rd &rarr; Cubbon Pk</div>
+          </div>
+          <div class="journey-tab" id="tab_BC" onclick="selectJourney('B->C')">
+            <div class="tag">B &rarr; C</div>
+            <div class="desc">Cubbon Pk &rarr; Majestic</div>
+          </div>
+          <div class="journey-tab" id="tab_CA" onclick="selectJourney('C->A')">
+            <div class="tag">C &rarr; A</div>
+            <div class="desc">Majestic &rarr; MG Rd</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- MODE B CONTROLS -->
+      <div id="modeBControls" style="display: none;">
+        <div class="section-title">Custom Locations (Arbitrary Bengaluru Trip)</div>
+        <div class="custom-input-card">
+          <div class="form-group">
+            <label>Trip Preset</label>
+            <select class="form-input" id="tripPresetSelect" onchange="applyTripPreset()">
+              <option value="indiranagar_vidhana">Indiranagar 100ft Rd &rarr; Vidhana Soudha</option>
+              <option value="richmond_commercial">Richmond Circle &rarr; Commercial Street</option>
+              <option value="koramangala_mgroad">Koramangala &rarr; MG Road Metro</option>
+              <option value="custom">Custom Coordinates</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Origin Name</label>
+            <input type="text" class="form-input" id="customOrigin" value="Indiranagar 100ft Road">
+          </div>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+            <div class="form-group">
+              <label>Origin Lat</label>
+              <input type="number" step="0.0001" class="form-input" id="customOriginLat" value="12.9716">
+            </div>
+            <div class="form-group">
+              <label>Origin Lon</label>
+              <input type="number" step="0.0001" class="form-input" id="customOriginLon" value="77.6412">
+            </div>
+          </div>
+          <div class="form-group" style="margin-top: 6px;">
+            <label>Destination Name</label>
+            <input type="text" class="form-input" id="customDest" value="Vidhana Soudha Metro">
+          </div>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+            <div class="form-group">
+              <label>Dest Lat</label>
+              <input type="number" step="0.0001" class="form-input" id="customDestLat" value="12.9798">
+            </div>
+            <div class="form-group">
+              <label>Dest Lon</label>
+              <input type="number" step="0.0001" class="form-input" id="customDestLon" value="77.5905">
+            </div>
+          </div>
+          <button class="gemma-action-btn" id="btnComputeCustom" onclick="planCustomTrip()">Compute Multimodal Routes</button>
+          <div id="planErrorBanner" style="display: none; margin-top: 8px; font-size: 12px; padding: 8px; border-radius: var(--radius-sm);" class="banner-error"></div>
+        </div>
+
+        <!-- MODE B PHOTO UPLOAD & ACCESSIBILITY ASSESSMENT CARD -->
+        <div class="section-title" style="margin-top: 14px;">Pedestrian Photograph Upload</div>
+        <div class="custom-input-card">
+          <p style="font-size: 11px; color: var(--text-muted); margin-bottom: 8px;">
+            Supply ground-level photographs of walking connectors to assess physical accessibility.
+          </p>
+          <div class="form-group">
+            <label>Target Route Segment</label>
+            <select class="form-input" id="uploadSegmentSelect">
+              <option value="CUSTOM_SEG_WALK_1">Direct Walking Route (CUSTOM_SEG_WALK_1)</option>
+              <option value="CUSTOM_SEG_BUS_1">Bus Ingress Walk (CUSTOM_SEG_BUS_1)</option>
+              <option value="CUSTOM_SEG_BUS_3">Bus Egress Walk (CUSTOM_SEG_BUS_3)</option>
+            </select>
+          </div>
+          <div class="upload-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
+            <input type="file" id="fileInput" style="display:none;" onchange="handleFileChange(event)">
+            <div id="uploadPrompt">
+              <div style="font-size: 20px; margin-bottom: 4px;">&#128247;</div>
+              <div style="font-size: 12px; font-weight: 600; color: var(--purple);">Choose photo or drag file here</div>
+              <div style="font-size: 10px; color: var(--text-dim); margin-top: 2px;">JPEG, PNG, WebP (max 10MB)</div>
+            </div>
+            <div id="fileSelectedInfo" style="display: none; font-size: 12px; color: var(--blue);">
+              <span id="selectedFileName"></span>
+            </div>
+          </div>
+          <button class="gemma-action-btn" id="btnUploadAnalyze" style="margin-top: 10px;" onclick="uploadAndAnalyzeUserPhoto()">
+            <span>&#10024; Run OpenCV & Gemma Analysis on Upload</span>
+          </button>
+          <div id="uploadResultBanner" style="display: none; margin-top: 10px; font-size: 12px; padding: 10px; border-radius: var(--radius-sm);"></div>
+        </div>
+      </div>
+
+      <!-- RANKING FILTERS -->
+      <div>
+        <div class="section-title">Rank Alternatives By</div>
+        <div class="filter-bar">
+          <button class="filter-btn active" data-sort="fastest" onclick="setRanking('fastest', this)">&zap; Fastest</button>
+          <button class="filter-btn" data-sort="least_walking" onclick="setRanking('least_walking', this)">&xcirc; Least Walking</button>
+          <button class="filter-btn" data-sort="fewest_transfers" onclick="setRanking('fewest_transfers', this)">&#8644; Fewest Transfers</button>
+          <button class="filter-btn" data-sort="best_accessibility" onclick="setRanking('best_accessibility', this)">&#9855; Most Accessible</button>
+        </div>
+      </div>
+
+      <!-- ROUTE CARDS LIST -->
+      <div class="section-title">Evaluated Route Alternatives</div>
+      <div id="routeCardsContainer" style="display: flex; flex-direction: column; gap: 14px;">
+        <!-- Injected via JavaScript -->
+      </div>
+
+    </div>
+
+    <!-- MAIN MAP & EVIDENCE VIEWER -->
+    <div class="content-area">
+      <div id="map"></div>
+
+      <!-- FLOATING EVIDENCE & GEMMA MODAL -->
+      <div class="evidence-panel" id="evidencePanel" style="display: none;">
+        <div class="evidence-header">
+          <h3 id="evTitle">Observation Evidence</h3>
+          <button class="close-btn" onclick="closeEvidence()">&times;</button>
+        </div>
+
+        <div class="evidence-img-container">
+          <img id="evImage" src="" alt="Street View Evidence">
+          <div class="img-badge" id="evBadge">Prepared Street View (Ground-Level)</div>
+        </div>
+
+        <button class="gemma-action-btn" id="btnRunGemma" onclick="triggerGemmaAnalysis()">
+          <span>&#10024; Run Gemma Multimodal Analysis</span>
+        </button>
+
+        <div id="gemmaResultsArea" style="display: none;">
+          <div class="section-title" style="margin-top: 6px;">Gemma 4 Structured Findings (6 Criteria)</div>
+          <div class="criteria-list" id="criteriaList">
+            <!-- Injected via JavaScript -->
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let map;
+    let markers = {};
+    let polylineLayer = null;
+    let currentMode = 'A';
+    let currentJourneyKey = 'A->B';
+    let currentRanking = 'fastest';
+    let allJourneysData = {};
+    let activeObservation = null;
+
+    // Fixed locations
+    const LOCATIONS = {
+      "A": { lat: 12.975526, lon: 77.606790, name: "MG Road Metro (A)" },
+      "B": { lat: 12.980958, lon: 77.597570, name: "Cubbon Park Metro (B)" },
+      "C": { lat: 12.975708, lon: 77.572876, name: "Majestic Terminal (C)" }
+    };
+
+    const OBSERVATIONS = [
+      { id: "OBS_1", name: "MG Road Metro Portal & Church St", lat: 12.975420, lon: 77.606510, img: "/api/images/OBS_1_mg_road.jpg" },
+      { id: "OBS_2", name: "Kasturba Road / Cubbon Park Walkway", lat: 12.978900, lon: 77.600900, img: "/api/images/OBS_2_kasturba_road.jpg" },
+      { id: "OBS_3", name: "Cubbon Park Metro Entrance A Plaza", lat: 12.980850, lon: 77.598350, img: "/api/images/OBS_3_cubbon_park.jpg" },
+      { id: "OBS_4", name: "Sheshadri Road / Maharani Subway", lat: 12.978450, lon: 77.584150, img: "/api/images/OBS_4_sheshadri_subway.jpg" },
+      { id: "OBS_5", name: "Majestic FOB & Metro Skywalk", lat: 12.975710, lon: 77.572880, img: "/api/images/OBS_5_majestic_fob.jpg" }
+    ];
+
+    function initMap() {
+      map = L.map('map', { zoomControl: false }).setView([12.978, 77.590], 14);
+      L.control.zoom({ position: 'topright' }).addTo(map);
+
+      // OpenStreetMap standard clean tiles
+      L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+        maxZoom: 19
+      }).addTo(map);
+
+      // Render Fixed Markers (A, B, C)
+      for (const [key, loc] of Object.entries(LOCATIONS)) {
+        const icon = L.divIcon({
+          className: 'custom-pin',
+          html: `<div style="background: #a855f7; color: white; border: 2px solid white; border-radius: 50%; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 13px; box-shadow: 0 0 10px rgba(168,85,247,0.6);">${key}</div>`,
+          iconSize: [28, 28]
+        });
+        L.marker([loc.lat, loc.lon], { icon }).addTo(map).bindPopup(`<b>Point ${key}</b><br>${loc.name}`);
+      }
+
+      // Render Observation Pins dynamically from backend API
+      fetch('/api/observations').then(r => r.json()).then(items => {
+        items.forEach(obs => {
+          const obsIcon = L.divIcon({
+            className: 'obs-pin',
+            html: `<div style="background: #0284c7; color: white; border: 2px solid #7dd3fc; border-radius: 8px; padding: 3px 6px; font-weight: 700; font-size: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.4); display: flex; align-items: center; gap: 4px;">&#128247; ${obs.id}</div>`,
+            iconSize: [60, 20]
+          });
+          L.marker([obs.lat, obs.lon], { icon: obsIcon }).addTo(map).on('click', () => {
+            openEvidence(obs.id, obs.name, obs.image_url);
+          });
+        });
+      }).catch(err => console.error("Error loading observations:", err));
+    }
+
+    async function loadJourneys() {
+      try {
+        const res = await fetch(`/api/journeys?sort=${currentRanking}`);
+        allJourneysData = await res.json();
+        renderJourneyCards();
+      } catch (err) {
+        console.error("Failed to load journeys:", err);
+      }
+    }
+
+    function renderJourneyCards() {
+      const container = document.getElementById('routeCardsContainer');
+      container.innerHTML = '';
+
+      const routes = allJourneysData[currentJourneyKey] || [];
+      if (routes.length === 0) {
+        container.innerHTML = '<div style="color: var(--text-dim); text-align: center; padding: 20px;">No routes available.</div>';
+        return;
+      }
+
+      routes.forEach((r, idx) => {
+        const card = document.createElement('div');
+        card.className = `route-card ${idx === 0 ? 'selected' : ''}`;
+        card.onclick = () => selectRoute(r, card);
+
+        let scoreClass = 'score-med';
+        let scoreBadge = '';
+        if (r.accessibility_verdict && r.accessibility_verdict.toLowerCase().includes('unassessed')) {
+          scoreClass = 'score-unassessed';
+          scoreBadge = `<div class="score-badge ${scoreClass}">? ${r.accessibility_score}/100 (Unassessed)</div>`;
+        } else if (r.accessibility_score >= 80) {
+          scoreClass = 'score-high';
+          scoreBadge = `<div class="score-badge ${scoreClass}">&#9855; ${r.accessibility_score}/100 (Accessible)</div>`;
+        } else if (r.accessibility_score >= 50) {
+          scoreClass = 'score-med';
+          scoreBadge = `<div class="score-badge ${scoreClass}">&#9855; ${r.accessibility_score}/100 (Moderate)</div>`;
+        } else {
+          scoreClass = 'score-low';
+          scoreBadge = `<div class="score-badge ${scoreClass}">&#9888; ${r.accessibility_score}/100 (Barriers)</div>`;
+        }
+
+        card.innerHTML = `
+          <div class="route-header">
+            <div>
+              <span class="route-mode-badge mode-${r.primary_mode}">${r.primary_mode}</span>
+              <div class="route-title" style="margin-top: 6px;">${r.title}</div>
+            </div>
+            ${scoreBadge}
+          </div>
+
+          <div class="route-summary">${r.summary}</div>
+
+          <div class="metrics-grid">
+            <div class="metric-item">
+              <div class="val">${r.total_duration_minutes}m</div>
+              <div class="lbl">Duration</div>
+            </div>
+            <div class="metric-item">
+              <div class="val">${r.total_walking_distance_meters}m</div>
+              <div class="lbl">Walking</div>
+            </div>
+            <div class="metric-item">
+              <div class="val">${r.total_transfers}</div>
+              <div class="lbl">Transfers</div>
+            </div>
+            <div class="metric-item">
+              <div class="val">&#8377;${r.total_fare_inr}</div>
+              <div class="lbl">Fare</div>
+            </div>
+          </div>
+
+          <div class="provenance-tag">
+            Provenances: <span>${Object.values(r.data_provenance).join('</span> <span>')}</span>
+          </div>
+
+          <div class="route-segments">
+            ${r.segments.map(s => `
+              <div class="seg-step">
+                <div class="seg-dot" style="background: ${s.mode === 'metro' ? '#a855f7' : (s.mode === 'bus' ? '#38bdf8' : '#10b981')}"></div>
+                <div class="seg-details">
+                  <strong>${s.mode.toUpperCase()}:</strong> ${s.from_name} &rarr; ${s.to_name} (${s.duration_minutes}m, ${s.distance_meters}m)
+                  ${s.transit_line ? `<div style="color: var(--blue); font-size: 11px;">Line: ${s.transit_line}</div>` : ''}
+                </div>
+              </div>
+            `).join('')}
+          </div>
+          ${r.observations && r.observations.length > 0 ? `
+            <button class="inspect-obs-btn" onclick="event.stopPropagation(); inspectRouteObservations('${r.id}')" style="margin-top: 10px; background: rgba(168, 85, 247, 0.15); border: 1px solid var(--purple); color: var(--purple); padding: 8px 12px; border-radius: var(--radius-sm); font-size: 11px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 6px; width: 100%; justify-content: center;">
+              &#128247; Inspect Ground Evidence &amp; Barriers (${r.observations.length} points)
+            </button>
+          ` : ''}
+        `;
+        container.appendChild(card);
+
+        if (idx === 0) {
+          selectRoute(r, card);
+        }
+      });
+    }
+
+    function inspectRouteObservations(routeId) {
+      const routes = allJourneysData[currentJourneyKey] || [];
+      const r = routes.find(x => x.id === routeId);
+      if (r && r.observations && r.observations.length > 0) {
+        const obs = r.observations[0];
+        fetch('/api/observations').then(res => res.json()).then(items => {
+          const match = items.find(i => i.id === obs.id);
+          const imgUrl = match ? match.image_url : `/api/images/${obs.id}`;
+          openEvidence(obs.id, obs.title || obs.name || "Observation Point", imgUrl);
+        }).catch(() => {
+          openEvidence(obs.id, obs.title || obs.name || "Observation Point", `/api/images/${obs.id}`);
+        });
+      }
+    }
+
+    function selectRoute(route, cardElement) {
+      document.querySelectorAll('.route-card').forEach(c => c.classList.remove('selected'));
+      if (cardElement) cardElement.classList.add('selected');
+
+      // Draw polyline
+      if (polylineLayer) {
+        map.removeLayer(polylineLayer);
+      }
+
+      let allPoints = [];
+      route.segments.forEach(s => {
+        if (s.polyline && s.polyline.length > 0) {
+          allPoints.push(...s.polyline);
+        }
+      });
+
+      if (allPoints.length > 0) {
+        const color = route.primary_mode === 'metro' ? '#a855f7' : (route.primary_mode === 'bus' ? '#38bdf8' : '#10b981');
+        polylineLayer = L.polyline(allPoints, { color, weight: 5, opacity: 0.85, lineJoin: 'round' }).addTo(map);
+        map.fitBounds(polylineLayer.getBounds(), { padding: [50, 50] });
+      }
+
+      // Check if route has associated observations
+      if (route.observations && route.observations.length > 0) {
+        const firstObs = route.observations[0];
+        fetch('/api/observations').then(r => r.json()).then(items => {
+          const match = items.find(i => i.id === firstObs.id);
+          const imgUrl = match ? match.image_url : `/api/images/${firstObs.id}`;
+          openEvidence(firstObs.id, firstObs.name, imgUrl);
+        }).catch(() => {
+          openEvidence(firstObs.id, firstObs.name, `/api/images/${firstObs.id}`);
+        });
+      }
+    }
+
+    function openEvidence(id, title, imgUrl) {
+      activeObservation = id;
+      document.getElementById('evidencePanel').style.display = 'flex';
+      document.getElementById('evTitle').innerText = title;
+      document.getElementById('evImage').src = imgUrl;
+      document.getElementById('evBadge').innerText = `Prepared Street View: ${id}`;
+      document.getElementById('gemmaResultsArea').style.display = 'none';
+      document.getElementById('btnRunGemma').disabled = false;
+      document.getElementById('btnRunGemma').innerHTML = `<span>&#10024; Run Gemma Multimodal Analysis on ${id}</span>`;
+    }
+
+    function closeEvidence() {
+      document.getElementById('evidencePanel').style.display = 'none';
+    }
+
+    async function triggerGemmaAnalysis() {
+      if (!activeObservation) return;
+      const btn = document.getElementById('btnRunGemma');
+      btn.disabled = true;
+      btn.innerText = 'Analyzing Image with Gemma...';
+
+      try {
+        const res = await fetch(`/api/analyze-observation/${activeObservation}`, { method: 'POST' });
+        const analysis = await res.json();
+
+        if (analysis.status === 'image_unavailable') {
+          btn.innerText = `\u26A0 Image Not Yet Collected (Unassessed)`;
+        } else if (analysis.status === 'runtime_unavailable') {
+          btn.innerText = `\u26A0 Runtime Unavailable (${analysis.inference_source})`;
+        } else {
+          btn.innerText = `\u2713 Visual Analysis Complete (${analysis.inference_source})`;
+        }
+        renderGemmaResults(analysis);
+        await loadJourneys(); // Refresh route cards and rankings with updated scores!
+      } catch (err) {
+        btn.innerText = 'Analysis Failed';
+        btn.disabled = false;
+        alert("Error calling Gemma analysis: " + err);
+      }
+    }
+
+    function renderGemmaResults(data) {
+      const area = document.getElementById('gemmaResultsArea');
+      const list = document.getElementById('criteriaList');
+      area.style.display = 'block';
+      list.innerHTML = '';
+
+      const keys = ['sidewalk', 'curb_ramps', 'tactile_paving', 'pedestrian_crossings', 'obstructions', 'surface_damage'];
+      keys.forEach(k => {
+        const c = data[k];
+        if (!c) return;
+        const row = document.createElement('div');
+        row.className = 'crit-row';
+        row.innerHTML = `
+          <div class="crit-head">
+            <span>${c.label}</span>
+            <span class="crit-status stat-${c.status}">${c.status} (${c.confidence})</span>
+          </div>
+          <div class="crit-desc">${c.explanation}</div>
+        `;
+        list.appendChild(row);
+      });
+    }
+
+    function selectJourney(key) {
+      currentJourneyKey = key;
+      document.querySelectorAll('.journey-tab').forEach(t => t.classList.remove('active'));
+      if (key === 'A->B') document.getElementById('tab_AB').classList.add('active');
+      if (key === 'B->C') document.getElementById('tab_BC').classList.add('active');
+      if (key === 'C->A') document.getElementById('tab_CA').classList.add('active');
+      renderJourneyCards();
+    }
+
+    function setRanking(sortKey, btnElement) {
+      currentRanking = sortKey;
+      document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+      if (btnElement) {
+        btnElement.classList.add('active');
+      } else {
+        const found = document.querySelector(`.filter-btn[data-sort="${sortKey}"]`);
+        if (found) found.classList.add('active');
+      }
+      if (currentMode === 'B' && allJourneysData['CUSTOM']) {
+        planCustomTrip();
+      } else {
+        loadJourneys();
+      }
+    }
+
+    function switchMode(m) {
+      currentMode = m;
+      document.getElementById('btnModeA').classList.toggle('active', m === 'A');
+      document.getElementById('btnModeB').classList.toggle('active', m === 'B');
+      document.getElementById('modeAControls').style.display = m === 'A' ? 'block' : 'none';
+      document.getElementById('modeBControls').style.display = m === 'B' ? 'block' : 'none';
+      if (m === 'A') {
+        currentJourneyKey = 'A->B';
+        selectJourney('A->B');
+        loadJourneys();
+      } else {
+        currentJourneyKey = 'CUSTOM';
+        planCustomTrip();
+      }
+    }
+
+    const PRESETS = {
+      indiranagar_vidhana: {
+        origin: "Indiranagar 100ft Road",
+        origLat: 12.9716, origLon: 77.6412,
+        dest: "Vidhana Soudha Metro",
+        destLat: 12.9798, destLon: 77.5905
+      },
+      richmond_commercial: {
+        origin: "Richmond Circle",
+        origLat: 12.9640, origLon: 77.5950,
+        dest: "Commercial Street",
+        destLat: 12.9820, destLon: 77.6100
+      },
+      koramangala_mgroad: {
+        origin: "Koramangala Sony World Signal",
+        origLat: 12.9352, origLon: 77.6245,
+        dest: "MG Road Metro Station",
+        destLat: 12.9755, destLon: 77.6068
+      }
+    };
+
+    function applyTripPreset() {
+      const val = document.getElementById('tripPresetSelect').value;
+      if (val === 'custom') return;
+      const p = PRESETS[val];
+      if (!p) return;
+      document.getElementById('customOrigin').value = p.origin;
+      document.getElementById('customOriginLat').value = p.origLat;
+      document.getElementById('customOriginLon').value = p.origLon;
+      document.getElementById('customDest').value = p.dest;
+      document.getElementById('customDestLat').value = p.destLat;
+      document.getElementById('customDestLon').value = p.destLon;
+      planCustomTrip();
+    }
+
+    async function planCustomTrip() {
+      const errBanner = document.getElementById('planErrorBanner');
+      errBanner.style.display = 'none';
+
+      const origin = document.getElementById('customOrigin').value.trim();
+      const dest = document.getElementById('customDest').value.trim();
+      const origLat = parseFloat(document.getElementById('customOriginLat').value);
+      const origLon = parseFloat(document.getElementById('customOriginLon').value);
+      const destLat = parseFloat(document.getElementById('customDestLat').value);
+      const destLon = parseFloat(document.getElementById('customDestLon').value);
+
+      if (!origin || !dest) {
+        errBanner.innerText = "Please enter both origin and destination names.";
+        errBanner.style.display = 'block';
+        return;
+      }
+      if (isNaN(origLat) || isNaN(origLon) || isNaN(destLat) || isNaN(destLon)) {
+        errBanner.innerText = "Coordinates must be valid decimal numbers.";
+        errBanner.style.display = 'block';
+        return;
+      }
+      if (origLat < -90 || origLat > 90 || destLat < -90 || destLat > 90 || origLon < -180 || origLon > 180 || destLon < -180 || destLon > 180) {
+        errBanner.innerText = "Coordinates out of bounds (Latitude: -90..90, Longitude: -180..180).";
+        errBanner.style.display = 'block';
+        return;
+      }
+
+      const btn = document.getElementById('btnComputeCustom');
+      btn.disabled = true;
+      btn.innerText = "Computing GTFS & Walking Alternatives...";
+
+      try {
+        const res = await fetch('/api/custom-journey', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            origin_name: origin,
+            origin_lat: origLat,
+            origin_lon: origLon,
+            dest_name: dest,
+            dest_lat: destLat,
+            dest_lon: destLon,
+            sort: currentRanking
+          })
+        });
+
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(errData.detail || `Server error (${res.status})`);
+        }
+
+        const options = await res.json();
+        allJourneysData['CUSTOM'] = options;
+        currentJourneyKey = 'CUSTOM';
+
+        // Update target segment selector options
+        const segSelect = document.getElementById('uploadSegmentSelect');
+        segSelect.innerHTML = '';
+        options.forEach(opt => {
+          opt.segments.forEach(seg => {
+            const op = document.createElement('option');
+            op.value = seg.id;
+            op.innerText = `${seg.mode.toUpperCase()}: ${seg.from_name} \u2192 ${seg.to_name} (${seg.id})`;
+            segSelect.appendChild(op);
+          });
+        });
+
+        renderJourneyCards();
+      } catch (err) {
+        errBanner.innerText = "Trip planning failed: " + err.message;
+        errBanner.style.display = 'block';
+      } finally {
+        btn.disabled = false;
+        btn.innerText = "Compute Multimodal Routes";
+      }
+    }
+
+    let selectedUploadFile = null;
+
+    function handleFileChange(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      selectedUploadFile = file;
+      document.getElementById('uploadPrompt').style.display = 'none';
+      document.getElementById('fileSelectedInfo').style.display = 'block';
+      document.getElementById('selectedFileName').innerText = `\uD83D\uDCC4 ${file.name} (${Math.round(file.size / 1024)} KB)`;
+    }
+
+    async function uploadAndAnalyzeUserPhoto() {
+      const banner = document.getElementById('uploadResultBanner');
+      banner.style.display = 'none';
+      banner.className = '';
+
+      if (!selectedUploadFile) {
+        banner.className = 'banner-error';
+        banner.innerText = "Please select or drop an image file first.";
+        banner.style.display = 'block';
+        return;
+      }
+
+      const segmentId = document.getElementById('uploadSegmentSelect').value || 'CUSTOM_SEG_WALK_1';
+      const btn = document.getElementById('btnUploadAnalyze');
+      btn.disabled = true;
+      btn.innerText = "Running OpenCV Quality & Gemma...";
+
+      const formData = new FormData();
+      formData.append('image', selectedUploadFile);
+
+      try {
+        const res = await fetch(`/api/upload-and-analyze?segment_id=${encodeURIComponent(segmentId)}`, {
+          method: 'POST',
+          body: formData
+        });
+
+        const data = await res.json();
+        if (!res.ok) {
+          banner.className = 'banner-error';
+          banner.innerText = `Upload Rejected: ${data.detail || 'Validation failed'}`;
+          banner.style.display = 'block';
+          return;
+        }
+
+        // Render success or honest unavailable status
+        let statusMsg = '';
+        if (data.status === 'completed') {
+          banner.className = 'banner-success';
+          statusMsg = `\u2713 Visual Analysis Complete (${data.inference_source}). Score: ${data.calculated_accessibility_score}/100. Status: ${data.evidence_status}`;
+        } else {
+          banner.className = 'banner-warning';
+          statusMsg = `\u26A0 ${data.status.toUpperCase()}: ${data.summary || data.limitations?.[0] || 'Unassessed'}. Provenance: ${data.inference_source}`;
+        }
+        banner.innerText = statusMsg;
+        banner.style.display = 'block';
+
+        // Re-evaluate current routes to dynamically reflect updated score in route cards!
+        if (allJourneysData['CUSTOM']) {
+          renderJourneyCards();
+        }
+      } catch (err) {
+        banner.className = 'banner-error';
+        banner.innerText = "Network / Inference request failed: " + err.message;
+        banner.style.display = 'block';
+      } finally {
+        btn.disabled = false;
+        btn.innerText = "\u2728 Run OpenCV & Gemma Analysis on Upload";
+      }
+    }
+
+    window.onload = () => {
+      initMap();
+      loadJourneys();
+    };
+  </script>
+</body>
+</html>
