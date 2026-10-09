@@ -71,10 +71,10 @@ app = FastAPI(
     version="2.0.0",
 )
 
-# CORS Middleware
+# CORS Middleware - Allow all origins without exceptions
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.ALLOWED_ORIGINS,
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
