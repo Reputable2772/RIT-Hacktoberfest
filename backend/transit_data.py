@@ -80,6 +80,18 @@ class JourneyOption(BaseModel):
         default_factory=dict,
         description="Coverage counts: planned, collected, unavailable, analyzed",
     )
+    computation_mode: str = Field(
+        default="computed",
+        description="Origin of routing data: 'computed', 'local_data', or 'precompiled_fallback'",
+    )
+    fallback_reason: Optional[str] = Field(
+        default=None,
+        description="Machine-readable fallback code if fallback was activated",
+    )
+    fallback_explanation: Optional[str] = Field(
+        default=None,
+        description="User-readable explanation of why fallback was activated",
+    )
 
 
 
