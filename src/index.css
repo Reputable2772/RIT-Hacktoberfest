@@ -1,0 +1,298 @@
+@import "tailwindcss";
+
+/* ── Urban Evidence Lab: Exact Design Tokens ───────────────────── */
+:root {
+  /* Core Foundation: Obsidian Ink */
+  --obsidian-ink:       #0B1014;
+  --deep-surface:       #121A20;
+  --raised-surface:     #19232A;
+  --surface-highlight:  #222E37;
+
+  /* Survey Paper Foundation (Editorial / Methodology) */
+  --paper-warm:         #F2EFE7;
+  --paper-muted:        #D7D3CA;
+  --paper-text-dark:    #0B1014;
+  --paper-text-muted:   #4A5560;
+
+  /* Chromatic Signatures */
+  --signal-teal:        #19D3C5;
+  --signal-teal-dim:    rgba(25, 211, 197, 0.12);
+  --signal-teal-glow:   rgba(25, 211, 197, 0.24);
+
+  --survey-amber:       #FFB454;
+  --survey-amber-dim:   rgba(255, 180, 84, 0.14);
+
+  --barrier-coral:      #FF6268;
+  --barrier-coral-dim:  rgba(255, 98, 104, 0.14);
+
+  --evidence-grey:      #A6B0BB;
+  --evidence-grey-dim:  rgba(166, 176, 187, 0.12);
+
+  /* Translucent Fine Borders */
+  --border-fine:        rgba(166, 176, 187, 0.12);
+  --border-medium:      rgba(166, 176, 187, 0.22);
+  --border-teal:        rgba(25, 211, 197, 0.35);
+  --border-coral:       rgba(255, 98, 104, 0.35);
+  --border-amber:       rgba(255, 180, 84, 0.35);
+  --border-paper:       rgba(11, 16, 20, 0.15);
+
+  /* Legacy / Compatibility Fallbacks (Preserving Existing Components) */
+  --navy:               var(--obsidian-ink);
+  --navy-light:         var(--deep-surface);
+  --navy-card:          var(--raised-surface);
+  --border:             var(--border-fine);
+  --teal:               var(--signal-teal);
+  --teal-dim:           var(--signal-teal-dim);
+  --amber:              var(--survey-amber);
+  --amber-dim:          var(--survey-amber-dim);
+  --red:                var(--barrier-coral);
+  --red-dim:            var(--barrier-coral-dim);
+  --green:              var(--signal-teal);
+  --green-dim:          var(--signal-teal-dim);
+  --grey:               var(--evidence-grey);
+  --grey-dim:           var(--evidence-grey-dim);
+  --text:               #F1F5F9;
+  --text-muted:         var(--evidence-grey);
+  --text-dim:           #6E7A87;
+
+  /* Typography */
+  --font-display:       'Space Grotesk', system-ui, sans-serif;
+  --font-body:          'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono:          'IBM Plex Mono', monospace;
+
+  /* Micro Radii: Precise, Crisp, Architectural (No 16px blobs) */
+  --radius-xs:          2px;
+  --radius-sm:          4px;
+  --radius:             6px;
+  --radius-lg:          8px;
+}
+
+/* ── Base Styles ───────────────────────────────────────────────── */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+  font-size: 16px;
+  background-color: var(--obsidian-ink);
+}
+
+body {
+  margin: 0;
+  background-color: var(--obsidian-ink);
+  color: var(--text);
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+  min-height: 100dvh;
+  overflow-x: hidden;
+}
+
+h1, h2, h3, h4, h5 {
+  font-family: var(--font-display);
+  letter-spacing: -0.025em;
+  font-weight: 700;
+}
+
+code, kbd, samp, pre {
+  font-family: var(--font-mono);
+}
+
+/* ── Cartographic & Architectural Primitives ──────────────────── */
+
+/* Graticule Background Grid (Delicate inspection grid) */
+.bg-mesh {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-color: var(--obsidian-ink);
+  background-image:
+    linear-gradient(to right, rgba(166, 176, 187, 0.03) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(166, 176, 187, 0.03) 1px, transparent 1px);
+  background-size: 32px 32px;
+}
+
+.bg-grain::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  opacity: 0.018;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+  background-repeat: repeat;
+  background-size: 128px 128px;
+}
+
+/* Lab Panel (Workstation container) */
+.glass,
+.lab-panel {
+  background: var(--deep-surface);
+  border: 1px solid var(--border-fine);
+  border-radius: var(--radius);
+}
+
+.lab-panel-raised {
+  background: var(--raised-surface);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius);
+}
+
+/* Measurement Rule (Architectural hairline datum line) */
+.accent-line,
+.measurement-rule {
+  width: 2.5rem;
+  height: 2px;
+  background: var(--signal-teal);
+  border-radius: 1px;
+}
+
+/* Editorial Warm Paper Section (For Methodology, Legal, or Principles) */
+.section-paper {
+  background-color: var(--paper-warm);
+  color: var(--paper-text-dark);
+  border-top: 1px solid var(--border-paper);
+  border-bottom: 1px solid var(--border-paper);
+}
+
+.section-paper h1,
+.section-paper h2,
+.section-paper h3 {
+  color: var(--paper-text-dark);
+}
+
+.section-paper p {
+  color: var(--paper-text-muted);
+}
+
+/* Status Badges & Chips */
+.chip-barrier {
+  background: var(--barrier-coral-dim);
+  border: 1px solid var(--border-coral);
+  color: var(--barrier-coral);
+  font-family: var(--font-mono);
+}
+
+.chip-clear {
+  background: var(--signal-teal-dim);
+  border: 1px solid var(--border-teal);
+  color: var(--signal-teal);
+  font-family: var(--font-mono);
+}
+
+.chip-inconclusive {
+  background: var(--survey-amber-dim);
+  border: 1px solid var(--border-amber);
+  color: var(--survey-amber);
+  font-family: var(--font-mono);
+}
+
+.chip-unverified {
+  background: var(--evidence-grey-dim);
+  border: 1px solid var(--border-fine);
+  color: var(--evidence-grey);
+  font-family: var(--font-mono);
+}
+
+/* Technical Monospace Micro-labels */
+.mono-label {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+/* Tabular Numerals */
+.count-num {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+}
+
+/* ── Accessible Focus Rings ────────────────────────────────────── */
+:focus-visible {
+  outline: 2px solid var(--signal-teal);
+  outline-offset: 2px;
+}
+
+/* ── Leaflet Dark Basemap Overrides ────────────────────────────── */
+.leaflet-container {
+  background: var(--obsidian-ink) !important;
+  font-family: var(--font-mono) !important;
+}
+
+.leaflet-tile {
+  filter: brightness(0.70) invert(1) contrast(1.18) hue-rotate(185deg) saturate(0.28);
+}
+
+.leaflet-control-attribution {
+  background: rgba(11, 16, 20, 0.92) !important;
+  color: var(--evidence-grey) !important;
+  font-family: var(--font-mono) !important;
+  font-size: 10px !important;
+  border: 1px solid var(--border-fine) !important;
+  border-radius: var(--radius-xs) !important;
+}
+
+.leaflet-control-attribution a {
+  color: var(--signal-teal) !important;
+  text-decoration: none !important;
+}
+
+/* ── Reusable Motion Transitions ───────────────────────────────── */
+.transition-editorial {
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes scanline {
+  0%   { top: 0; opacity: 0.8; }
+  100% { top: 100%; opacity: 0; }
+}
+
+.scan-line {
+  position: absolute;
+  left: 0; right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--signal-teal), transparent);
+  box-shadow: 0 0 6px var(--signal-teal);
+  animation: scanline 2.4s ease-in-out infinite;
+}
+
+/* ── Reduced Motion ────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto !important;
+  }
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  .scan-line {
+    display: none !important;
+  }
+}
+
+
+/* ── Layout & Typography Utilities ─────────────────────────────── */
+.sr-only {
+  position: absolute;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden;
+  clip: rect(0,0,0,0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+.section-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 1.5rem;
+}
+
+@media (max-width: 640px) {
+  .section-container {
+    padding: 0 1rem;
+  }
+}

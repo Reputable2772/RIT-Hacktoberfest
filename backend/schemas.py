@@ -89,6 +89,61 @@ class AnalysisResponse(BaseModel):
         ...,
         description="Explanation of the deterministic evidence gate verdict",
     )
+    # UI and Dual-Witness compatibility fields
+    verdict: Optional[str] = None
+    barrier_type: Optional[str] = None
+    description: Optional[str] = None
+    confidence: Optional[float] = None
+    quality: Optional[Dict] = None
+    witness_a: Optional[Dict] = None
+    witness_b: Optional[Dict] = None
+    witness_agreement: Optional[str] = None
+    gate_reasons: Optional[List[str]] = None
+    captured_at: Optional[str] = None
+    capture_date_source: Optional[str] = None
+    source: Optional[str] = None
+    photo_hash: Optional[str] = None
+
+
+class SegmentModel(BaseModel):
+    id: str
+    name: str
+    lat: float
+    lon: float
+    polyline: List[List[float]]
+    status: str
+    last_verified: Optional[str] = None
+    confidence: Optional[float] = None
+    image_url: Optional[str] = None
+    captured_at: Optional[str] = None
+    provenance: Optional[str] = None
+    limitations: Optional[List[str]] = None
+    transit_note: Optional[str] = None
+
+
+class BenchmarkPerModeModel(BaseModel):
+    correct: int = 0
+    missed_barriers: int = 0
+    inconclusive_count: int = 0
+    false_reassurance_count: int = 0
+    false_reassurance_rate: float = 0.0
+
+
+class BenchmarkPerModesModel(BaseModel):
+    classical: BenchmarkPerModeModel
+    gemma: BenchmarkPerModeModel
+    combined: BenchmarkPerModeModel
+
+
+class BenchmarkModel(BaseModel):
+    n: int = 0
+    correct: int = 0
+    missed_barriers: int = 0
+    false_reassurance_count: int = 0
+    false_reassurance_rate: float = 0.0
+    inconclusive_count: int = 0
+    per_mode: Optional[BenchmarkPerModesModel] = None
+
 
 
 class HealthResponse(BaseModel):

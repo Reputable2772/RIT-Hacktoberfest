@@ -203,7 +203,7 @@ class ManifestService:
             if os.path.exists(r_dir):
                 for fname in os.listdir(r_dir):
                     if fname.endswith(".png"):
-                        disk_files.add(os.path.relpath(os.path.join(r_dir, fname), self.base_dir))
+                        disk_files.add(os.path.relpath(os.path.join(r_dir, fname), self.base_dir).replace("\\", "/"))
 
         manifest_files: Set[str] = set()
         missing_files: List[Dict[str, Any]] = []

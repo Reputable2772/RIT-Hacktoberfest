@@ -1,191 +1,257 @@
-# Saakshi — Pedestrian Accessibility Evidence Checker (Backend)
+# Saakshi-Access
 
-Saakshi is an evidence-based pedestrian accessibility image checker. It analyzes single street-view images to detect visible physical accessibility barriers (e.g. steps without ramps, sidewalk obstructions, broken pavement, curbs), applies defensive OpenCV image quality gates, and outputs deterministic, qualified assessment results with explicit limitations.
+> **Evidence, not assumptions.** A verification and evidence layer that checks whether a footpath segment is actually clear.
 
----
-
-## 1. Architecture & Design Principles
-
-- **Separation of Concerns:** The vision model acts strictly as an objective observation extractor describing visual evidence. The backend owns the final verdict.
-- **Defensive Quality Gate:** OpenCV checks image readability (blur and under/overexposure) before any model call is dispatched.
-- **Deterministic Evidence Gate:** No arbitrary confidence numbers. The result is strictly mapped to `BARRIER`, `NO_BARRIER_OBSERVED`, or `INCONCLUSIVE`.
-- **Honest Limitations:** Single-image assessment only. The system never claims a pedestrian route is "accessible" or "safe".
+Built by **Team OpenForge** (**Prakhyath S**, **Chiranthan**) for **Hacktoberfest Hack Day Bengaluru '26**.  
+**Tracks:** *Best Use of Gemma 4* and *Best Open-Source AI Project*.
 
 ---
 
-## 2. Directory Structure
+> [!IMPORTANT]
+> **Saakshi-Access is a verification and evidence tool, not a navigation app.** It never labels a path "safe" or "accessible". It states *"no barrier observed on [date], confidence X"*, or *"UNVERIFIED"*.  
+> **Decision support only. Not legal advice. Not a safety guarantee.**
 
-```text
-├── backend/
-│   ├── __init__.py
-│   ├── config.py           # Environment and heuristic threshold configuration
-│   ├── evidence_gate.py    # Deterministic status rules and limitations
-│   ├── gemma.py            # Google google-genai SDK integration and parsing
-│   ├── image_quality.py    # OpenCV blur, exposure, and readability checks
-│   ├── main.py             # FastAPI endpoints (GET /health, POST /api/analyze)
-│   └── schemas.py          # Pydantic request/response and observation models
-├── tests/
-│   ├── __init__.py
-│   ├── test_api.py         # End-to-end API tests with mocked inference
-│   ├── test_evidence_gate.py # Deterministic gate unit tests
-│   └── test_image_quality.py # OpenCV quality heuristic tests
-├── .env.example            # Template for environment variables
-├── .gitignore              # Ignores .env, .venv, bytecode, and nix artifacts
-├── flake.nix               # Reproducible Nix flake development shell
-├── requirements.txt        # Python dependency manifest
-└── README.md
+---
+
+## The Problem
+
+Maps show that a footpath exists, not whether it is clear today. For wheelchair, cane, low-vision, and senior users, a parked vehicle, debris, or a broken slab can make a segment impassable—and these barriers can change within hours. A wrong "all clear" is significantly more hazardous than no information at all.
+
+---
+
+## What It Does
+
+Given a street-level pedestrian photograph, Saakshi-Access returns one of four statuses, accompanied by the verifiable evidence trail:
+
+| Status | Meaning |
+| :--- | :--- |
+| **`BARRIER`** | A physical barrier was observed, accompanied by its category and factual visual description. |
+| **`CLEAR_OBSERVED`** | No barrier was observed in this image at capture time. *(This is never treated as proof of permanent absence).* |
+| **`INCONCLUSIVE`** | Poor image quality, or the visual checks do not support an unambiguous claim. Retake requested. |
+| **`UNVERIFIED`** | No recent evidence logged, or the capture timestamp is missing or stale. |
+
+---
+
+## How It Works
+
+```
+                                  +-----------------------+
+                                  |   Pedestrian Image    |
+                                  +-----------+-----------+
+                                              |
+                                              v
+                              +-------------------------------+
+                              | Quality Check (OpenCV Heuristic) |
+                              +---------------+---------------+
+                                              |
+                             [Passes Filter]  |  [Fails Filter: Blur / Exposure]
+                                              |  --> INCONCLUSIVE (Refusal Gate)
+                     +------------------------+------------------------+
+                     |                                                 |
+                     v                                                 v
+         +-----------------------+                         +-----------------------+
+         | Check A: OpenCV Witness |                         | Check B: Gemma 4 Witness |
+         | Geometric & Edge Quality|                         | Multimodal Vision-Lang |
+         +-----------+-----------+                         +-----------+-----------+
+                     |                                                 |
+                     +------------------------+------------------------+
+                                              |
+                                              v
+                             +---------------------------------+
+                             |   Deterministic Gate (Python)   |
+                             |   Zero-Hallucination Civic Rule |
+                             +----------------+----------------+
+                                              |
+                                              v
+                             +---------------------------------+
+                             | Verified Status + Evidence Log  |
+                             +---------------------------------+
 ```
 
+- **Quality Check (OpenCV)**: Evaluates Laplacian blur variance and grayscale exposure histogram dispersion. Poor quality immediately triggers `INCONCLUSIVE` before invoking neural models.
+- **Check A (OpenCV)**: Image quality metrics and edge continuity checks.
+- **Check B (Gemma 4)**: Multimodal spatial vision model running locally (or via configured endpoint), extracting structured, visible-only barrier observations from a fixed category taxonomy (sidewalks, curb ramps, tactile paving, crosswalks, obstructions, surface damage).
+- **Deterministic Gate (Plain Python)**: A pure, unit-tested function that computes the verdict. **No LLM decides the final verdict.** Gemma's output counts only as evidence for what is visibly present, never as proof that an obstacle is absent.
+- **Freshness**: Confidence decays with age according to barrier type. Decay rates are declared assumptions, not empirical constants.
+- **Architecture**: The React frontend only displays results and telemetry. The FastAPI backend and deterministic gate execute all validation and decisions.
+
 ---
 
-## 3. Development Setup
+## Gate Logic
 
-### Using Nix Flake
+| Situation | Verdict |
+| :--- | :--- |
+| Poor image quality (blur / harsh exposure), or too few matching features | **`INCONCLUSIVE`** (Retake requested) |
+| Duplicate or previously registered image hash | **Rejected as reused** |
+| Gemma reports a barrier and the scene check is consistent | **`BARRIER`** (With category & description) |
+| Gemma reports a barrier but the scene check cannot confirm it | **`INCONCLUSIVE`** (Additional vantage requested) |
+| No barrier reported, scene matches, capture date is recent | **`CLEAR_OBSERVED`** |
+| Capture date is missing, unverified, or too old | **`UNVERIFIED`** |
 
-Enter the Nix development shell:
+*Historical imagery supports historical observations, not confirmation of current conditions.*
 
+---
+
+## Status of This Project
+
+*A transparent inventory of active vs. planned capabilities:*
+
+| Component | Status | Details |
+| :--- | :--- | :--- |
+| **Image Quality Check (OpenCV)** | **Done** | Laplacian blur variance & exposure checks in `image_quality.py`. |
+| **Gemma 4 Observations** | **Done** | Structured 6-criterion schema evaluation in `gemma.py`. |
+| **Deterministic Gate + Unit Tests** | **Done** | 69 unit & integration tests passing (`pytest tests/`). |
+| **Evidence UI (React + Vite + Tailwind)** | **Done** | Evidence Analysis Workspace & Multimodal Transit Corridors. |
+| **Multimodal Transit Corridors** | **Done** | Mode A (Metro Purple Line, Bus, Walk) & Mode B (Point-to-point GTFS). |
+| **Benchmark Harness & Metrics** | **Done** | False-reassurance rate tracking and ground-truth validation. |
+| **Freshness Decay** | **Simulated** | Time-based confidence decay heuristics across observation ages. |
+| **In-app GPS Capture** | **Planned** | Native EXIF geo-tagging & hardware compass heading ingestion. |
+| **Hash-chained Evidence Log** | **Planned** | Merkle-tree chained tamper-evident audit ledger. |
+| **Volunteer Re-verification Closure Loop** | **Planned** | Peer-audited civic verification task dispatch. |
+| **Owner Attribution & Escalation** | **Planned** | Human-approved municipal grievance ticket generation. |
+
+---
+
+## Tech Stack
+
+- **AI & Vision**: Google Gemma 4 (open weights) multimodal vision via Ollama (`gemma4:e4b` / `gemma4:e2b`) or Google GenAI API fallback.
+- **Classical Vision**: OpenCV (`opencv-python-headless`), NumPy, SHA-256 fingerprinting.
+- **Backend**: Python 3.11+, FastAPI, Pydantic v2, Uvicorn, GTFS processing.
+- **Frontend**: React 19, Vite, TypeScript, Tailwind CSS, Leaflet / React-Leaflet, Framer Motion.
+- **Testing**: pytest (69 test cases), custom end-to-end integration suite.
+
+---
+
+## Getting Started
+
+### Prerequisites
+- Python 3.11+
+- Node.js 20+
+- Optional local inference: [Ollama](https://ollama.com/) with Gemma 4:
+  ```bash
+  ollama pull gemma4:e4b   # or gemma4:e2b
+  ```
+
+### 1. Backend Setup
 ```bash
-nix develop
-```
+# From workspace root
+python -m venv .venv
+# Windows:
+.venv\Scripts\activate
+# Linux/macOS:
+source .venv/bin/activate
 
-This shell provides:
-- Python 3.12
-- Native libraries (`glib`, `libGL`, `zlib`, `stdenv.cc.cc.lib`) for OpenCV and NumPy C-extensions
-- Automatic `.venv` activation and environment setup
-
-### Installing Python Dependencies
-
-Within the development environment, dependencies can be installed using `pip`:
-
-```bash
 pip install -r requirements.txt
+python -m uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
----
-
-## 4. Configuration
-
-Copy `.env.example` to `.env`:
-
+### 2. Frontend Setup
 ```bash
-cp .env.example .env
+# Install frontend dependencies
+npm install
+
+# Configure environment variables
+# Copy .env.example to .env
+# VITE_BACKEND_URL=http://localhost:8000
+# VITE_USE_MOCK=false
+
+npm run dev
 ```
+> *Note:* When `VITE_USE_MOCK=true` is set, a prominent amber simulation banner is rendered across the header to declare that simulated telemetry is active.
 
-| Environment Variable | Default | Description |
-|---|---|---|
-| `GEMINI_API_KEY` | *(empty)* | Google AI Studio API key |
-| `GEMINI_MODEL` | `gemma-4-26b-a4b-it` | Model identifier (also accepts `GEMMA_MODEL` as alias) |
-| `MAX_UPLOAD_MB` | `10` | Maximum image upload size in megabytes |
-| `ALLOWED_ORIGINS` | `*` | Comma-separated CORS allowed origins |
-| `APP_ENV` | `development` | Environment name |
-| `BLUR_THRESHOLD` | `100.0` | Heuristic Laplacian variance threshold (higher = sharper) |
-| `DARK_BRIGHTNESS_THRESHOLD` | `35.0` | Heuristic minimum mean pixel intensity (0–255) |
-| `BRIGHT_BRIGHTNESS_THRESHOLD` | `220.0` | Heuristic maximum mean pixel intensity (0–255) |
-
-> **Note on Heuristic Thresholds:**
-> The blur and exposure metrics are computational heuristics for image readability, **not calibrated accessibility metrics**.
-
----
-
-## 5. Running the Backend Server
-
-Start the FastAPI application with Uvicorn:
-
+### 3. Running Tests
 ```bash
-# Inside nix develop:
-uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload
-```
+# Run complete test suite (unit tests, image quality, gate logic, routing)
+python -m pytest tests/
 
-Interactive OpenAPI documentation is available at `http://localhost:8000/docs`.
-
----
-
-## 6. Running Tests
-
-Run the automated test suite completely offline (no API key or network access required):
-
-```bash
-# Inside nix develop:
-pytest -v
-```
-
-All model calls in tests are mocked, validating:
-- `GET /health` endpoint
-- File upload validations (unsupported MIME types, empty files, size limits)
-- OpenCV quality rejection skipping model inference
-- Deterministic verdicts (`BARRIER`, `NO_BARRIER_OBSERVED`, `INCONCLUSIVE`)
-- Resilience to malformed JSON, model schema deviations, and API timeouts
-
----
-
-## 7. API Specification
-
-### `GET /health`
-Returns system status and configured model without external API calls.
-
-**Response `200 OK`:**
-```json
-{
-  "status": "ok",
-  "app": "saakshi",
-  "version": "1.0.0",
-  "configured_model": "gemma-4-26b-a4b-it"
-}
-```
-
-### `POST /api/analyze`
-Upload a single street-view image for accessibility barrier assessment.
-
-- **Request:** `multipart/form-data`
-- **Field:** `image` (binary, JPEG/PNG/WebP, up to 10 MB)
-
-**Response `200 OK`:**
-```json
-{
-  "status": "BARRIER",
-  "observations": {
-    "visible_barriers": [
-      {
-        "type": "stairs",
-        "description": "Flight of 4 steps with no adjacent ramp",
-        "location": "entrance to path",
-        "visibility": "clear"
-      }
-    ],
-    "visible_features": ["tactile_paving"],
-    "uncertain_observations": [],
-    "limitations": ["Single camera perspective"]
-  },
-  "image_quality": {
-    "passed": true,
-    "laplacian_variance": 312.4,
-    "mean_brightness": 128.5,
-    "issues": []
-  },
-  "limitations": [
-    "Assessment is based strictly on a single 2D street-view image.",
-    "Result does not guarantee that the route, path, or entrance is safe or fully accessible.",
-    "Physical cross-slopes, exact path widths, and continuous path clearance outside the camera frame cannot be measured.",
-    "Transient obstacles (e.g. parked vehicles, temporary works) may change over time."
-  ],
-  "reason": "Clear physical accessibility barrier(s) detected in the pedestrian area: stairs (entrance to path)."
-}
+# Run end-to-end contract verification
+python scripts/verify_all_endpoints_and_contracts.py
 ```
 
 ---
 
-## 8. Status Semantics & Evidence Gate
+## API Specification
 
-| Status | Condition | Meaning |
-|---|---|---|
-| `BARRIER` | Usable image + clearly visible barrier | Evidence of physical obstruction or barrier to pedestrian mobility was observed in the image. |
-| `NO_BARRIER_OBSERVED` | Usable image + no barriers reported | No barriers observed within the visible camera angle. Qualified by limitations. |
-| `INCONCLUSIVE` | Poor image quality, API error, malformed output, or relevant visual ambiguity | No defensible verdict can be reached from the available visual evidence. |
+| Endpoint | Method | Purpose |
+| :--- | :--- | :--- |
+| `/health` | `GET` | Health status and configured vision model. |
+| `/api/analyze` | `POST` | Dual-witness image intake, OpenCV pre-gate quality, and deterministic verdict. |
+| `/api/locations` | `GET` | Canonical Mode A demo transit locations (MG Road, Cubbon Park, Majestic). |
+| `/api/journeys` | `GET` | Multimodal transit route alternatives with dynamic sorting (`fastest`, `best_accessibility`). |
+| `/api/observations` | `GET` | Prepared Street View camera observation points with Gemma status. |
+| `/api/analyze-observation/{id}` | `POST` | Trigger multimodal inference on prepared Street View imagery. |
+| `/api/custom-journey` | `POST` | Mode B arbitrary point-to-point GTFS multimodal route planning. |
+| `/api/upload-and-analyze` | `POST` | Upload custom pedestrian connector photo for route re-ranking. |
+| `/api/samples` | `GET` | Curated sample images for field inspection demonstration. |
+| `/api/benchmark` | `GET` | Benchmark evaluation telemetry and false-reassurance metrics. |
+| `/api/segments` | `GET` | Historical audited corridor segments with coordinates and imagery. |
 
 ---
 
-## 9. Known Model Limitations & Availability Note
+## Evaluation & Metrics
 
-- **Gemma Vision Availability:** As of current Google AI Studio API releases, Gemma 2 models (`gemma-2-2b-it`, `gemma-2-27b-it`) are text-only and do not accept multimodal image inputs via Google AI Studio's API endpoint.
-- **Multimodal Models:** Multimodal vision input on the Google API is supported by Gemini models (e.g. `gemini-2.0-flash`).
-- **Configurability:** Saakshi retains `GEMINI_MODEL` (and fallback `GEMMA_MODEL`) as fully configurable environment variables. If a multimodal Gemma endpoint or proxy is deployed, configure its identifier in `GEMINI_MODEL` without code modifications.
+The headline metric of Saakshi-Access is the **false-reassurance rate**:  
+$$\text{False Reassurance Rate} = \frac{\text{Staged barrier images falsely classified as clear}}{\text{Total barrier images evaluated}}$$
+
+In accessibility audits, declaring an impassable footpath clear causes severe physical entrapment. Saakshi-Access actively optimizes against false reassurance rather than raw accuracy.  
+We also report barrier precision, recall, INCONCLUSIVE refusal rate, and single-image inference latency.
+
+---
+
+## Limitations
+
+- **Small Staged Pilot**: Evaluated on focused Bengaluru corridors (MG Road, Cubbon Park, Majestic, Residency Road). This is not blanket citywide coverage.
+- **Staged vs. Wild Barriers**: Staged barriers can be simpler than real chaotic street conditions. Hard cases (harsh glare, water logging, tree roots, dense shadows) are cataloged.
+- **Authenticity Boundary**: AI-generated, cropped, or edited photos cannot be completely prevented. SHA-256 fingerprinting guarantees ledger integrity, not physical truth.
+- **Dimensionality**: Sidewalk width, precise ramp slope angles, and tactile curb heights cannot be reliably measured from a single uncalibrated 2D photograph.
+- **Human Centricity**: Built as an engineer-led hackathon prototype without disabled users directly in the testing loop. Field testing with disability advocacy groups is the necessary next milestone.
+- **Decay Heuristics**: Freshness decay rates are stated engineering assumptions, not empirically measured urban degradation constants.
+
+---
+
+## Data and Attribution
+
+- **Field Imagery**: Original pedestrian observations and staged obstruction captures taken along Bengaluru corridors.
+- **Transit & Map Data**: [OpenStreetMap](https://www.openstreetmap.org/) contributors (ODbL, treated as claims, not ground truth). BMRCL Purple Line station locations and BMTC bus routes from GTFS schedule feeds.
+- **Taxonomy**: Barrier categories adapted from the [Project Sidewalk](https://projectsidewalk.io/) open taxonomy.
+- **Regional Context**: CAG, Moving Without Barriers, Chennai perception survey (~270 respondents). Used as context, not direct Bengaluru measurements.
+
+---
+
+## Related Work
+
+Saakshi-Access builds upon principles pioneered by **Project Sidewalk** and **AccessMap**. Our primary contributions are:
+1. Freshness-aware evidence confidence that decays over time.
+2. Explicit refusal gates (`INCONCLUSIVE`) to eradicate false safety assurances.
+3. A purely deterministic Python decision gate where LLMs provide descriptive evidence rather than final verdicts.
+4. Multimodal GTFS transit integration bridging last-mile pedestrian reality with public transport.
+
+---
+
+## Privacy and Responsible Use
+
+- **Local Inference Support**: Gemma can run locally via Ollama without sending pedestrian photos to third-party cloud APIs.
+- **Neutral Civic Tone**: Factual, non-accusatory reporting. No naming of individual businesses, property owners, or municipal departments.
+- **Human-in-the-Loop**: Any civic escalation requires human review and confirmation.
+
+---
+
+## Roadmap
+
+- **Phase 1 (Hackathon MVP - Current)**: Dual-witness vision analysis, OpenCV quality pre-filter, deterministic verdict gate, multimodal GTFS planner, evidence UI.
+- **Phase 2**: In-app GPS capture, hash-chained evidence ledger, volunteer re-verification loop.
+- **Phase 3**: Field trials with disabled commuter groups, municipal escalation pipeline, and expansion across Bengaluru transit hubs.
+
+---
+
+## Team OpenForge
+
+- **Prakhyath S** (Lead): Deterministic gate, Gemma & OpenCV checks, backend API, GTFS multimodal planner.
+- **Chiranthan**: UI architecture, evaluation benchmark, visual evidence collection.
+
+---
+
+## Licence
+
+Licensed under the [Apache License, Version 2.0](LICENSE).  
+Copyright © 2026 Team OpenForge.
