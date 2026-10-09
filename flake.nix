@@ -21,10 +21,12 @@
             pkgs.python312Packages.virtualenv
             pkgs.glib
             pkgs.libGL
+            pkgs.zlib
+            pkgs.stdenv.cc.cc.lib
           ];
 
           shellHook = ''
-            export LD_LIBRARY_PATH="${pkgs.lib.makeLibraryPath [ pkgs.glib pkgs.libGL ]}:$LD_LIBRARY_PATH"
+            export LD_LIBRARY_PATH="${pkgs.lib.makeLibraryPath [ pkgs.stdenv.cc.cc.lib pkgs.zlib pkgs.glib pkgs.libGL ]}:$LD_LIBRARY_PATH"
             if [ ! -d ".venv" ]; then
               python3 -m venv .venv
             fi
