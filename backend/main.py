@@ -71,13 +71,18 @@ app = FastAPI(
     version="2.0.0",
 )
 
-# CORS Middleware - Allow all origins without exceptions
+# CORS Middleware - Allow all origins, methods, and headers without restrictions.
+# NOTE: allow_credentials must be False when allow_origins=["*"].
+# The CORS spec forbids the wildcard + credentials combination; browsers (including Edge)
+# will block the response with strict-origin-when-cross-origin if both are set.
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["*"],
+    allow_credentials=False,
+    max_age=86400,
 )
 
 base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
