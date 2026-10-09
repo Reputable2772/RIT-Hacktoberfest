@@ -246,8 +246,8 @@ Saakshi-Access builds upon principles pioneered by **Project Sidewalk** and **Ac
 
 ## Team OpenForge
 
-- **Prakhyath S** (Lead): Deterministic gate, Gemma & OpenCV checks, backend API, GTFS multimodal planner.
-- **Chiranthan**: UI architecture, evaluation benchmark, visual evidence collection.
+- **Prakhyath S** (Lead): UI architecture, evaluation benchmark, visual evidence collection.
+- **Chiranthan**:Deterministic gate, Gemma & OpenCV checks, backend API, GTFS multimodal planner
 
 ---
 
