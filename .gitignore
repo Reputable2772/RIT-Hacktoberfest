@@ -20,3 +20,7 @@ htmlcov/
 result
 result-*
 .direnv/
+
+# Large GTFS zip downloads
+data/gtfs/*.zip
+
