@@ -31,6 +31,7 @@ from backend.schemas import (
     GemmaVisualAnalysis,
     ObservationCoverageSummary,
 )
+from backend import route_engine
 from backend.transit_data import (
     ALL_JOURNEY_OPTIONS,
     JourneyOption,
@@ -323,7 +324,7 @@ def recalculate_journey_from_cache(journey: JourneyOption) -> JourneyOption:
 
 def get_evaluated_journeys(sort_criterion: str = "fastest") -> Dict[str, List[JourneyOption]]:
     """Return all journeys across A->B, B->C, and C->A with dynamic scores and rankings."""
-    raw_journeys = get_all_journeys()
+    raw_journeys = route_engine.get_all_corridor_journeys_with_fallback()
     evaluated: Dict[str, List[JourneyOption]] = {}
 
     for key, options in raw_journeys.items():
@@ -735,4 +736,4 @@ def plan_custom_journey(
         )
     )
 
-    return options
+    return [recalculate_journey_from_cache(opt) for opt in options]

@@ -729,6 +729,10 @@
             <span>&#10024; Run OpenCV & Gemma Analysis on Upload</span>
           </button>
           <div id="uploadResultBanner" style="display: none; margin-top: 10px; font-size: 12px; padding: 10px; border-radius: var(--radius-sm);"></div>
+          <div id="uploadCriteriaArea" style="display: none; margin-top: 12px;">
+            <div class="section-title" style="margin-top: 8px;">Gemma 4 Structured Findings (6 Criteria)</div>
+            <div class="criteria-list" id="uploadCriteriaList"></div>
+          </div>
         </div>
       </div>
 
@@ -762,7 +766,29 @@
           <button class="close-btn" onclick="closeEvidence()">&times;</button>
         </div>
 
-        <div class="evidence-img-container">
+        <!-- Sequential Observation Navigation -->
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+          <button id="btnPrevObs" onclick="navigateObservation(-1)" style="background: var(--bg-accent); border: 1px solid var(--bg-card-border); color: var(--text-main); padding: 4px 10px; border-radius: var(--radius-sm); font-size: 11px; cursor: pointer;">&larr; Prev Point</button>
+          <span id="evSeqInfo" style="font-size: 11px; color: var(--text-muted); font-family: 'JetBrains Mono', monospace;">Point 1</span>
+          <button id="btnNextObs" onclick="navigateObservation(1)" style="background: var(--bg-accent); border: 1px solid var(--bg-card-border); color: var(--text-main); padding: 4px 10px; border-radius: var(--radius-sm); font-size: 11px; cursor: pointer;">Next Point &rarr;</button>
+        </div>
+
+        <!-- Metadata Row -->
+        <div id="evMetaRow" style="display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; font-size: 11px;">
+          <span id="evDistTag" style="background: rgba(56, 189, 248, 0.15); color: var(--blue); padding: 2px 6px; border-radius: 4px;">Chainage: 0m</span>
+          <span id="evDateTag" style="background: rgba(168, 85, 247, 0.15); color: var(--purple); padding: 2px 6px; border-radius: 4px;">Date: Mar 2026</span>
+          <span id="evHeadingTag" style="background: rgba(255, 255, 255, 0.08); color: var(--text-main); padding: 2px 6px; border-radius: 4px;">Heading: 0°</span>
+          <span id="evStatusTag" style="background: rgba(16, 185, 129, 0.15); color: var(--emerald); padding: 2px 6px; border-radius: 4px;">Collected</span>
+        </div>
+
+        <!-- Uncovered Gap Warning Banner -->
+        <div id="evGapBanner" style="display: none; background: rgba(245, 158, 11, 0.12); border: 1px solid rgba(245, 158, 11, 0.4); color: #fbbf24; padding: 10px 12px; border-radius: var(--radius-sm); margin-bottom: 10px; font-size: 12px; line-height: 1.4;">
+          <div style="font-weight: 700; margin-bottom: 4px; display: flex; align-items: center; gap: 6px;">&#9888; Ground Imagery Unavailable along this Segment</div>
+          <div id="evGapReasonText" style="color: var(--text-main); font-size: 11px;"></div>
+          <div style="font-size: 10px; color: var(--text-muted); margin-top: 4px;">Kept strictly unassessed without fabricated imagery or scores.</div>
+        </div>
+
+        <div class="evidence-img-container" id="evImgContainer">
           <img id="evImage" src="" alt="Street View Evidence">
           <div class="img-badge" id="evBadge">Prepared Street View (Ground-Level)</div>
         </div>
@@ -790,6 +816,8 @@
     let currentRanking = 'fastest';
     let allJourneysData = {};
     let activeObservation = null;
+    let allObservationsList = [];
+    let activeObservationList = [];
 
     // Fixed locations
     const LOCATIONS = {
@@ -806,6 +834,8 @@
       { id: "OBS_5", name: "Majestic FOB & Metro Skywalk", lat: 12.975710, lon: 77.572880, img: "/api/images/OBS_5_majestic_fob.jpg" }
     ];
 
+    let obsLayerGroup = null;
+
     function initMap() {
       map = L.map('map', { zoomControl: false }).setView([12.978, 77.590], 14);
       L.control.zoom({ position: 'topright' }).addTo(map);
@@ -815,6 +845,8 @@
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
         maxZoom: 19
       }).addTo(map);
+
+      obsLayerGroup = L.layerGroup().addTo(map);
 
       // Render Fixed Markers (A, B, C)
       for (const [key, loc] of Object.entries(LOCATIONS)) {
@@ -826,19 +858,61 @@
         L.marker([loc.lat, loc.lon], { icon }).addTo(map).bindPopup(`<b>Point ${key}</b><br>${loc.name}`);
       }
 
-      // Render Observation Pins dynamically from backend API
+      // Fetch all 171 observations dynamically from backend API and render corridor pins
       fetch('/api/observations').then(r => r.json()).then(items => {
-        items.forEach(obs => {
-          const obsIcon = L.divIcon({
-            className: 'obs-pin',
-            html: `<div style="background: #0284c7; color: white; border: 2px solid #7dd3fc; border-radius: 8px; padding: 3px 6px; font-weight: 700; font-size: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.4); display: flex; align-items: center; gap: 4px;">&#128247; ${obs.id}</div>`,
-            iconSize: [60, 20]
-          });
-          L.marker([obs.lat, obs.lon], { icon: obsIcon }).addTo(map).on('click', () => {
-            openEvidence(obs.id, obs.name, obs.image_url);
-          });
-        });
+        allObservationsList = items;
+        renderObservationMarkers();
       }).catch(err => console.error("Error loading observations:", err));
+    }
+
+    function getActiveRouteId() {
+      if (currentJourneyKey === 'A->B') return 'a_to_b';
+      if (currentJourneyKey === 'B->C') return 'b_to_c';
+      if (currentJourneyKey === 'C->A') return 'c_to_a';
+      return null;
+    }
+
+    function renderObservationMarkers() {
+      if (!obsLayerGroup) return;
+      obsLayerGroup.clearLayers();
+
+      const routeId = getActiveRouteId();
+      if (routeId) {
+        activeObservationList = allObservationsList.filter(o => o.route_id === routeId);
+        activeObservationList.sort((a, b) => (a.sequence_number || 0) - (b.sequence_number || 0));
+      } else {
+        activeObservationList = [...allObservationsList];
+      }
+
+      activeObservationList.forEach((obs, idx) => {
+        const isCollected = (obs.status === 'collected' || obs.collection_status === 'collected');
+        const iconBg = isCollected ? '#0284c7' : '#d97706';
+        const iconBorder = isCollected ? '#7dd3fc' : '#fde68a';
+        const iconGlyph = isCollected ? '&#128247;' : '&#9888;';
+        const seqNum = obs.sequence_number || (idx + 1);
+
+        const obsIcon = L.divIcon({
+          className: 'obs-pin',
+          html: `<div style="background: ${iconBg}; color: white; border: 2px solid ${iconBorder}; border-radius: 6px; padding: 2px 5px; font-weight: 700; font-size: 10px; box-shadow: 0 2px 6px rgba(0,0,0,0.5); display: flex; align-items: center; gap: 3px; cursor: pointer; white-space: nowrap;">${iconGlyph} #${seqNum}</div>`,
+          iconSize: [48, 20]
+        });
+
+        const marker = L.marker([obs.lat, obs.lon], { icon: obsIcon });
+        marker.on('click', () => {
+          openEvidence(obs.id, obs.title || obs.name, obs.image_url, obs);
+        });
+
+        const dist = (obs.distance_along_route_m !== undefined) ? Math.round(obs.distance_along_route_m) : 0;
+        const date = obs.capture_date || obs.imagery_date || 'Mar 2026';
+        const heading = (obs.heading_degrees !== undefined) ? Math.round(obs.heading_degrees) : 0;
+
+        const tooltip = isCollected
+          ? `<b>${obs.id}</b><br>Chainage: ${dist}m<br>Date: ${date}<br>Heading: ${heading}°`
+          : `<b>${obs.id} (Gap)</b><br>Chainage: ${dist}m<br><i>${obs.reason || obs.unavailable_reason || 'Ground imagery unavailable'}</i>`;
+
+        marker.bindTooltip(tooltip, { direction: 'top', offset: [0, -10] });
+        obsLayerGroup.addLayer(marker);
+      });
     }
 
     async function loadJourneys() {
@@ -916,6 +990,30 @@
             Provenances: <span>${Object.values(r.data_provenance).join('</span> <span>')}</span>
           </div>
 
+          ${(r.computation_mode === 'precompiled_fallback' || r.fallback_explanation) ? `
+            <div style="margin-top: 6px; background: rgba(245, 158, 11, 0.12); border: 1px solid rgba(245, 158, 11, 0.35); color: #fbbf24; border-radius: var(--radius-sm); padding: 5px 8px; font-size: 11px; line-height: 1.3;">
+              &#9888; <strong>Precompiled Fallback:</strong> ${r.fallback_explanation || 'Precompiled route alternative loaded due to routing computation failure.'}
+            </div>
+          ` : `
+            <div style="margin-top: 6px; background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.25); color: var(--emerald); border-radius: var(--radius-sm); padding: 4px 8px; font-size: 10px; display: flex; align-items: center; gap: 4px;">
+              &#10003; <strong>Routing Engine:</strong> Dynamically computed (${r.data_provenance.routing || 'local route geometry'})
+            </div>
+          `}
+
+          ${r.observation_coverage ? `
+            <div style="margin-top: 8px; background: rgba(255,255,255,0.03); border: 1px solid var(--bg-card-border); border-radius: var(--radius-sm); padding: 8px 10px; font-size: 11px;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                <span style="color: var(--text-muted); font-weight: 600;">Ground Evidence Coverage:</span>
+                <span style="font-weight: 700; color: ${r.observation_coverage.coverage_percent >= 80 ? 'var(--emerald)' : (r.observation_coverage.coverage_percent >= 40 ? 'var(--blue)' : '#f59e0b')}">${r.observation_coverage.coverage_percent}% (${r.observation_coverage.collected}/${r.observation_coverage.total_planned})</span>
+              </div>
+              <div style="display: flex; gap: 8px; color: var(--text-dim); font-size: 10px;">
+                <span style="color: var(--blue);">&#128247; ${r.observation_coverage.collected} Collected</span>
+                <span style="color: #f59e0b;">&#9888; ${r.observation_coverage.unavailable} Gaps</span>
+                <span style="color: var(--emerald);">&#10003; ${r.observation_coverage.analyzed} Analyzed</span>
+              </div>
+            </div>
+          ` : ''}
+
           <div class="route-segments">
             ${r.segments.map(s => `
               <div class="seg-step">
@@ -927,9 +1025,9 @@
               </div>
             `).join('')}
           </div>
-          ${r.observations && r.observations.length > 0 ? `
+          ${(r.observations && r.observations.length > 0) || (r.observation_coverage && r.observation_coverage.collected > 0) ? `
             <button class="inspect-obs-btn" onclick="event.stopPropagation(); inspectRouteObservations('${r.id}')" style="margin-top: 10px; background: rgba(168, 85, 247, 0.15); border: 1px solid var(--purple); color: var(--purple); padding: 8px 12px; border-radius: var(--radius-sm); font-size: 11px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 6px; width: 100%; justify-content: center;">
-              &#128247; Inspect Ground Evidence &amp; Barriers (${r.observations.length} points)
+              &#128247; Inspect Ground Evidence &amp; Barriers (${r.observation_coverage ? r.observation_coverage.collected + '/' + r.observation_coverage.total_planned + ' captures' : r.observations.length + ' points'})
             </button>
           ` : ''}
         `;
@@ -945,14 +1043,15 @@
       const routes = allJourneysData[currentJourneyKey] || [];
       const r = routes.find(x => x.id === routeId);
       if (r && r.observations && r.observations.length > 0) {
-        const obs = r.observations[0];
-        fetch('/api/observations').then(res => res.json()).then(items => {
-          const match = items.find(i => i.id === obs.id);
-          const imgUrl = match ? match.image_url : `/api/images/${obs.id}`;
-          openEvidence(obs.id, obs.title || obs.name || "Observation Point", imgUrl);
-        }).catch(() => {
-          openEvidence(obs.id, obs.title || obs.name || "Observation Point", `/api/images/${obs.id}`);
-        });
+        if (allObservationsList.length > 0) {
+          activeObservationList = r.observations.map(obs => {
+            return allObservationsList.find(o => o.id === obs.id) || obs;
+          });
+        } else {
+          activeObservationList = r.observations;
+        }
+        const firstObs = activeObservationList[0];
+        openEvidence(firstObs.id, firstObs.title || firstObs.name || "Observation Point", firstObs.image_url || `/api/images/${firstObs.id}`, firstObs);
       }
     }
 
@@ -977,34 +1076,123 @@
         polylineLayer = L.polyline(allPoints, { color, weight: 5, opacity: 0.85, lineJoin: 'round' }).addTo(map);
         map.fitBounds(polylineLayer.getBounds(), { padding: [50, 50] });
       }
-
-      // Check if route has associated observations
-      if (route.observations && route.observations.length > 0) {
-        const firstObs = route.observations[0];
-        fetch('/api/observations').then(r => r.json()).then(items => {
-          const match = items.find(i => i.id === firstObs.id);
-          const imgUrl = match ? match.image_url : `/api/images/${firstObs.id}`;
-          openEvidence(firstObs.id, firstObs.name, imgUrl);
-        }).catch(() => {
-          openEvidence(firstObs.id, firstObs.name, `/api/images/${firstObs.id}`);
-        });
-      }
     }
 
-    function openEvidence(id, title, imgUrl) {
+    function openEvidence(id, title, imgUrl, obsData) {
       activeObservation = id;
       document.getElementById('evidencePanel').style.display = 'flex';
-      document.getElementById('evTitle').innerText = title;
-      document.getElementById('evImage').src = imgUrl;
-      document.getElementById('evBadge').innerText = `Prepared Street View: ${id}`;
-      document.getElementById('gemmaResultsArea').style.display = 'none';
-      document.getElementById('btnRunGemma').disabled = false;
-      document.getElementById('btnRunGemma').innerHTML = `<span>&#10024; Run Gemma Multimodal Analysis on ${id}</span>`;
+
+      const obs = obsData || allObservationsList.find(o => o.id === id) || { id: id, name: title, image_url: imgUrl };
+
+      // Update Title
+      document.getElementById('evTitle').innerText = obs.name || title || id;
+
+      // Update Navigation & Sequence info
+      const listToUse = activeObservationList.length > 0 ? activeObservationList : allObservationsList;
+      const curIdx = listToUse.findIndex(o => o.id === id);
+      const prevBtn = document.getElementById('btnPrevObs');
+      const nextBtn = document.getElementById('btnNextObs');
+      const seqInfo = document.getElementById('evSeqInfo');
+
+      if (curIdx >= 0) {
+        if (seqInfo) seqInfo.innerText = `Point ${curIdx + 1} of ${listToUse.length} (${id})`;
+        if (prevBtn) prevBtn.disabled = (curIdx <= 0);
+        if (nextBtn) nextBtn.disabled = (curIdx >= listToUse.length - 1);
+      } else {
+        if (seqInfo) seqInfo.innerText = id;
+        if (prevBtn) prevBtn.disabled = false;
+        if (nextBtn) nextBtn.disabled = false;
+      }
+
+      // Update Metadata Row
+      const chainage = (obs.distance_along_route_m !== undefined) ? Math.round(obs.distance_along_route_m) : 0;
+      const distTag = document.getElementById('evDistTag');
+      if (distTag) distTag.innerText = `Chainage: ${chainage}m`;
+
+      const dateTag = document.getElementById('evDateTag');
+      if (dateTag) dateTag.innerText = `Date: ${obs.capture_date || obs.imagery_date || 'Mar 2026'}`;
+
+      const heading = (obs.heading_degrees !== undefined) ? Math.round(obs.heading_degrees) : ((obs.heading !== undefined) ? Math.round(obs.heading) : 0);
+      const headingTag = document.getElementById('evHeadingTag');
+      if (headingTag) headingTag.innerText = `Heading: ${heading}°`;
+
+      const statusTag = document.getElementById('evStatusTag');
+      const gapBanner = document.getElementById('evGapBanner');
+      const gapReasonText = document.getElementById('evGapReasonText');
+      const evImg = document.getElementById('evImage');
+      const evBadge = document.getElementById('evBadge');
+      const btnGemma = document.getElementById('btnRunGemma');
+
+      const isUnavailable = (obs.status === 'unavailable' || obs.collection_status === 'unavailable' || obs.image_available === false);
+
+      if (isUnavailable) {
+        if (statusTag) {
+          statusTag.innerText = 'Unavailable (Gap)';
+          statusTag.style.background = 'rgba(245, 158, 11, 0.2)';
+          statusTag.style.color = '#fbbf24';
+        }
+        if (gapBanner) gapBanner.style.display = 'block';
+        if (gapReasonText) gapReasonText.innerText = obs.reason || obs.unavailable_reason || 'Ground imagery collection unavailable along this segment. Kept strictly unassessed.';
+        if (evImg) evImg.style.display = 'none';
+        if (evBadge) evBadge.innerText = `Segment Gap: ${id} (Preserved Unassessed)`;
+        if (btnGemma) {
+          btnGemma.disabled = true;
+          btnGemma.innerHTML = `<span>&#9888; Ground Imagery Unavailable (Neutral 50.0 Baseline)</span>`;
+        }
+      } else {
+        if (statusTag) {
+          statusTag.innerText = 'Collected';
+          statusTag.style.background = 'rgba(16, 185, 129, 0.15)';
+          statusTag.style.color = 'var(--emerald)';
+        }
+        if (gapBanner) gapBanner.style.display = 'none';
+        if (evImg) {
+          evImg.style.display = 'block';
+          evImg.src = obs.image_url || imgUrl || `/api/images/${id}`;
+        }
+        if (evBadge) evBadge.innerText = `Street View Capture: ${id}`;
+        if (btnGemma) {
+          btnGemma.disabled = false;
+          btnGemma.innerHTML = `<span>&#10024; Run Gemma Multimodal Analysis on ${id}</span>`;
+        }
+      }
+
+      if (map && obs.lat && obs.lon) {
+        map.panTo([obs.lat, obs.lon], { animate: true, duration: 0.35 });
+      }
+
+      const resultsArea = document.getElementById('gemmaResultsArea');
+      if (resultsArea) resultsArea.style.display = 'none';
+    }
+
+    function navigateObservation(delta) {
+      const listToUse = activeObservationList.length > 0 ? activeObservationList : allObservationsList;
+      if (!listToUse || listToUse.length === 0) return;
+      const curIdx = listToUse.findIndex(o => o.id === activeObservation);
+      const targetIdx = curIdx >= 0 ? curIdx + delta : 0;
+      if (targetIdx >= 0 && targetIdx < listToUse.length) {
+        const nextObs = listToUse[targetIdx];
+        openEvidence(nextObs.id, nextObs.name || nextObs.title, nextObs.image_url, nextObs);
+      }
     }
 
     function closeEvidence() {
       document.getElementById('evidencePanel').style.display = 'none';
     }
+
+    // Keyboard navigation for observations
+    document.addEventListener('keydown', (e) => {
+      const panel = document.getElementById('evidencePanel');
+      if (panel && panel.style.display !== 'none') {
+        if (e.key === 'ArrowLeft') {
+          navigateObservation(-1);
+        } else if (e.key === 'ArrowRight') {
+          navigateObservation(1);
+        } else if (e.key === 'Escape') {
+          closeEvidence();
+        }
+      }
+    });
 
     async function triggerGemmaAnalysis() {
       if (!activeObservation) return;
@@ -1061,6 +1249,7 @@
       if (key === 'A->B') document.getElementById('tab_AB').classList.add('active');
       if (key === 'B->C') document.getElementById('tab_BC').classList.add('active');
       if (key === 'C->A') document.getElementById('tab_CA').classList.add('active');
+      renderObservationMarkers();
       renderJourneyCards();
     }
 
@@ -1265,10 +1454,33 @@
         banner.innerText = statusMsg;
         banner.style.display = 'block';
 
-        // Re-evaluate current routes to dynamically reflect updated score in route cards!
-        if (allJourneysData['CUSTOM']) {
-          renderJourneyCards();
+        // Render structured 6 criteria cards
+        const critArea = document.getElementById('uploadCriteriaArea');
+        const critList = document.getElementById('uploadCriteriaList');
+        if (critArea && critList) {
+          critList.innerHTML = '';
+          const keys = ['sidewalk', 'curb_ramps', 'tactile_paving', 'pedestrian_crossings', 'obstructions', 'surface_damage'];
+          let hasCrit = false;
+          keys.forEach(k => {
+            const c = data[k];
+            if (!c) return;
+            hasCrit = true;
+            const row = document.createElement('div');
+            row.className = 'crit-row';
+            row.innerHTML = `
+              <div class="crit-head">
+                <span>${c.label || k}</span>
+                <span class="crit-status stat-${c.status}">${c.status} (${c.confidence})</span>
+              </div>
+              <div class="crit-desc">${c.explanation || ''}</div>
+            `;
+            critList.appendChild(row);
+          });
+          critArea.style.display = hasCrit ? 'block' : 'none';
         }
+
+        // Re-evaluate current routes to dynamically reflect updated score in route cards!
+        await planCustomTrip();
       } catch (err) {
         banner.className = 'banner-error';
         banner.innerText = "Network / Inference request failed: " + err.message;

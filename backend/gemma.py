@@ -121,7 +121,14 @@ def get_genai_client() -> Optional[genai.Client]:
     """Instantiate and return a google-genai Client if API key is configured."""
     api_key = settings.GEMINI_API_KEY
     if not api_key or api_key in ("your_actual_key_here", "your_gemini_api_key_here"):
-        return None
+        from dotenv import load_dotenv
+        import os
+        load_dotenv(override=True)
+        env_key = os.getenv("GEMINI_API_KEY", "")
+        if env_key and env_key not in ("your_actual_key_here", "your_gemini_api_key_here"):
+            api_key = env_key
+        else:
+            return None
     try:
         return genai.Client(api_key=api_key)
     except Exception as e:
